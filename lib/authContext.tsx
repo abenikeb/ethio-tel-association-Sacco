@@ -7,6 +7,7 @@ import {
   useEffect,
 } from "react";
 import { decodeJWT, getAccessToken } from "./auth";
+import { useRouter } from "next/navigation";
 
 interface User {
   sub: string;
@@ -21,8 +22,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({
+  children,
+  requiredRole,
+}: {
+  children: ReactNode;
+  requiredRole: string;
+}) => {
   const [user, setUser] = useState<User | null>(null);
+  const router = useRouter();
   useEffect(() => {
     const fetch = async () => {
       const token = (await getAccessToken()) || "";
@@ -31,6 +39,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           //   const payload = JSON.parse(atob(token.split(".")[1])); // decode JWT payload
           setUser(usr);
+          // if (usr.role !== requiredRole) {
+          //   router.replace("/unauthorized");
+          // }
         } catch (err) {
           console.error("Invalid token");
           setUser(null);

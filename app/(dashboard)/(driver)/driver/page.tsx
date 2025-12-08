@@ -1,12 +1,14 @@
+"use client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
+  Table,
   TableHeader,
   TableRow,
   TableHead,
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import { Table, Download } from "lucide-react";
+import { Download } from "lucide-react";
 const data: {
   name: string;
   contact: string;
@@ -40,14 +42,12 @@ const data: {
 ];
 
 export default function Driver() {
-  function handleDownload(
-    event: React.MouseEvent<HTMLTableDataCellElement, MouseEvent>
-  ): void {
+  function handleDownload(event: React.MouseEvent<HTMLTableCellElement>) {
     throw new Error("Function not implemented.");
   }
 
   return (
-    <div className="w-full min-h-screen bg-gray-200">
+    <div className="w-full min-h-screen ">
       <h1 className="text-2xl font-semibold mb-4">Driver Dashboard</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="hover:shadow-lg transition-shadow duration-300 rounded-lg p-4 text-center">
@@ -86,9 +86,9 @@ export default function Driver() {
           </CardContent>
         </Card>
       </div>
-      <div className="p-2 bg-white rounded-lg w-full">
+      <div className="p-2 mt-5 bg-white rounded-lg w-full">
         {" "}
-        <Table className="mt-4 w-full border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <Table className=" w-full border border-gray-200 rounded-lg shadow-sm overflow-hidden">
           <TableHeader className="bg-gray-50">
             <TableRow>
               <TableHead className="px-6 py-3 text-left text-sm font-semibold text-gray-700">

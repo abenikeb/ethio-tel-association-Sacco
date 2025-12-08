@@ -1,6 +1,7 @@
 // "use server";
 
-import { getRefreshToken, setAuthCookies } from "@/lib/auth";
+import { getAccessToken, getRefreshToken, setAuthCookies } from "@/lib/auth";
+import { AddOperatorForm } from "@/lib/model";
 import axios from "axios";
 
 const api = axios.create({
@@ -10,7 +11,9 @@ const api = axios.create({
     "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY,
     "Content-Type": "application/json",
     Accept: "application/json",
+    Authorization: "Bearer ",
   },
+
   responseType: "json",
   decompress: true,
   withCredentials: true,
@@ -35,7 +38,8 @@ api.interceptors.response.use(
 );
 
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    config.headers.Authorization = `Bearer ${await getAccessToken()}`;
     console.log("[API Request]", config.method?.toUpperCase(), config.url);
 
     return config;
@@ -99,6 +103,37 @@ export const authAPI = {
   },
   whoAmI: async () => {
     const response = await api.get(`/user/me`);
+    return response.data;
+  },
+  forgotPassword: async (identifier: string) => {
+    let response = null;
+    if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$/.test(identifier)) {
+      response = await api.post("/auth/forgot-password", {
+        email: identifier,
+      });
+    } else {
+      response = await api.post("/auth/forgot-password", {
+        phone: identifier,
+      });
+    }
+    return response.data;
+  },
+};
+export const superAdminApi = {
+  addOperator: async (body: AddOperatorForm) => {
+    const response = await api.post("/admin/operators", body);
+    return response.data;
+  },
+  getOperator: async () => {
+    const response = await api.get("/admin/operators");
+    return response.data;
+  },
+  viewOperatorDetail: async (id: string) => {
+    const response = await api.get(`/admin/operators/${id}`);
+    return response.data;
+  },
+  deleteOperator: async (id: string) => {
+    const response = await api.delete(`/admin/operators/${id}`);
     return response.data;
   },
 };
