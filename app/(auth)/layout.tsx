@@ -1,10 +1,8 @@
 import type React from "react";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "@/app/globals.css";
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+import "@/app/globals.css";
+import { AuthProvider } from "@/lib/authContext";
 
 export const metadata: Metadata = {
   title: "Danu Booking - Book Your Bus Tickets Online",
@@ -38,7 +36,9 @@ export default function DashboardLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        <main>{children}</main>
+        <AuthProvider blackListRoles={[]}>
+          <main>{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );

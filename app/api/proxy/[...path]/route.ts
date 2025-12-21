@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { decompress } from "fzstd";
+export const runtime = "nodejs";
 
-const TARGET_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+import { NextRequest, NextResponse } from "next/server";
+// import { decompress } from "fzstd";
+
+const TARGET_URL = process.env.API_BASE_URL;
 
 export async function GET(
   request: NextRequest,
@@ -57,20 +59,30 @@ async function handleRequest(
 
     // Prepare headers - preserve important headers
     const headers = new Headers();
-    request.headers.forEach((value, key) => {
-      // Skip problematic headers but keep important ones
-      if (
-        !["host", "connection", "content-length", "origin", "referer"].includes(
-          key.toLowerCase()
-        )
-      ) {
-        headers.set(key, value);
-      }
-    });
+    headers.set("Content-Type", "application/json");
+    headers.set("Accept", "application/json");
+
+    const auth = request.headers.get("Authorization");
+    if (auth) headers.set("Authorization", auth);
+
+    const apiKey = request.headers.get("X-API-Key");
+    const csrf_token = request.headers.get("x-csrf-token");
+    if (csrf_token) headers.set("x-csrf-token", csrf_token);
+    if (apiKey) headers.set("X-API-Key", apiKey);
+    // request.headers.forEach((value, key) => {
+    //   // Skip problematic headers but keep important ones
+    //   if (
+    //     !["host", "connection", "content-length", "origin", "referer"].includes(
+    //       key.toLowerCase()
+    //     )
+    //   ) {
+    //     headers.set(key, value);
+    //   }
+    // });
 
     // Get request body for POST/PUT requests
     let body: string | undefined;
-    if (["POST", "PUT"].includes(method)) {
+    if (["POST", "PUT", "PATCH"].includes(method)) {
       body = await request.text();
       console.log("Proxy forwarding body:", body);
     }
@@ -83,7 +95,6 @@ async function handleRequest(
       method,
       headers,
       body,
-      credentials: "include",
     });
 
     // Create response with proper headers
@@ -102,10 +113,7 @@ async function handleRequest(
       }
     });
     const setCookies =
-      // Modern API (Next.js 14+)
-      response.headers.getSetCookie?.() ||
-      // Fallback for older environments
-      response.headers.get("set-cookie");
+      response.headers.getSetCookie?.() || response.headers.get("set-cookie");
 
     if (setCookies) {
       if (Array.isArray(setCookies)) {
@@ -132,15 +140,10 @@ async function handleRequest(
     responseHeaders.set("Access-Control-Allow-Credentials", "true");
 
     const raw = await response.arrayBuffer();
-    const encoding = response.headers.get("content-encoding")?.toLowerCase();
 
     let decoded: string;
 
-    if (encoding === "zstd") {
-      decoded = Buffer.from(decompress(new Uint8Array(raw))).toString();
-    } else {
-      decoded = Buffer.from(raw).toString();
-    }
+    decoded = Buffer.from(raw).toString();
 
     responseHeaders.set("Content-Type", "application/json");
 

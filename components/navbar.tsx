@@ -4,11 +4,14 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "./ui/button";
 import Link from "next/link";
+import { useAuth } from "@/lib/authContext";
+import AvatarHero from "./HeroAvatar";
 interface NavbarProps {
   initalPath: { href: string; label: string }[];
 }
 export default function Navbar(Props: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
@@ -31,33 +34,15 @@ export default function Navbar(Props: NavbarProps) {
                   {path.label}
                 </Link>
               ))}
-              {/* <Link
-                href="/"
-                className="text-gray-700 hover:text-teal-600 font-medium transition-colors"
-              >
-                Home
-              </Link>
-              <Link
-                href={`/bookings`}
-                className="text-gray-700 hover:text-teal-600 font-medium transition-colors"
-              >
-                Bookings
-              </Link>
-              <Link
-                href="/about-us"
-                className="text-gray-700 hover:text-teal-600 font-medium transition-colors"
-              >
-                About Us
-              </Link>
-              <Link
-                href="/contact"
-                className="text-gray-700 hover:text-teal-600 font-medium transition-colors"
-              >
-                Contact
-              </Link> */}
-              <Button className="bg-primary cursor-pointer hover:bg-teal-700 text-white font-semibold px-6 py-2 rounded transition-colors">
-                <Link href={"/login"}> Log In </Link>
-              </Button>
+              <AvatarHero />
+
+              {!user ? (
+                <Button className="bg-primary cursor-pointer hover:bg-teal-700 text-white font-semibold px-6 py-2 rounded transition-colors">
+                  <Link href={"/login"}> Log In </Link>
+                </Button>
+              ) : (
+                <></>
+              )}
             </div>
           </div>
 

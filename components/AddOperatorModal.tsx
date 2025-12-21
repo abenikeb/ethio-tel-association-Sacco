@@ -2,6 +2,7 @@
 
 import { superAdminApi } from "@/app/api/api";
 import { Button } from "@/components/ui/button";
+import axios from "axios";
 import {
   Dialog,
   DialogClose,
@@ -19,13 +20,16 @@ import { AddOperatorForm } from "@/lib/model";
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
+interface AddOperatorModalProps {
+  onSuccess?: () => void; // callback when a new operator is added
+}
 
-export function AddOperatorModal() {
+export function AddOperatorModal({ onSuccess }: AddOperatorModalProps) {
   const [open, setOpen] = useState(false);
   const [slug, setSlug] = useState("");
   const [form, setForm] = useState<AddOperatorForm>({
     name: "",
-    slug: slug,
+    slug: "",
     contact_phone: "",
     contact_email: "",
     extra_metadata: {
@@ -37,13 +41,35 @@ export function AddOperatorModal() {
     e: React.FormEvent<HTMLFormElement>
   ): Promise<void> {
     e.preventDefault();
+
     if (!form.contact_email || !form.contact_phone || !form.name) {
       toast.warning("Please insert all the fields");
       return;
     }
-    const response = await superAdminApi.addOperator(form);
+    form.slug = form.name.replace(/\s+/g, "-").toLowerCase();
 
-    console.log(response);
+    try {
+      const response = await superAdminApi.addOperator(form);
+
+      if (response) {
+        onSuccess?.();
+        setOpen(false);
+        return;
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.status == 500) {
+          toast.warning("This operator was added before");
+        }
+      } else if (error instanceof Error) {
+        toast.error(error.message);
+        console.log(error);
+      } else {
+        toast.error("Error trying to processs your request!");
+
+        console.log(error);
+      }
+    }
   }
 
   return (
@@ -91,7 +117,7 @@ export function AddOperatorModal() {
                       ...prev,
                       name: e?.target.value,
                     }));
-                    setSlug(e.target.value.replace(" ", "-").toLowerCase());
+                    setSlug(e.target.value.replace("", "-").toLowerCase());
                   }}
                 />
               </div>
@@ -133,7 +159,7 @@ export function AddOperatorModal() {
                 <Input
                   required
                   readOnly
-                  value={form?.name.replace(" ", "-").toLowerCase()}
+                  value={form?.name.replace(/\s+/g, "-").toLowerCase()}
                   id="slug"
                   name="slug"
                 />

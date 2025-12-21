@@ -5,11 +5,12 @@ import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
 
-import { Eye, EyeOff } from "lucide-react";
-import { authAPI } from "@/app/api/api";
+import { Eye, EyeOff, Router } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+
+import { useAuth } from "@/lib/authContext";
 import { decodeJWT, setAuthCookies } from "@/lib/auth";
 
 export default function LoginPage() {
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [checked, setChecked] = useState(false);
   const route = useRouter();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     // first format the phone number to E.164 format if needed
@@ -28,26 +30,36 @@ export default function LoginPage() {
       return;
     }
     try {
-      const response = await authAPI.login(
+      const response = await login(
         phone.trim().toLowerCase(),
         password,
-        checked,
-        "superadmin"
+        checked
+        // "superadmin"
       );
+      console.log(response);
+
       if (response) {
         await setAuthCookies(response);
         const decoded = await decodeJWT(response.access_token);
-        toast.success("You have successfully Logged In");
-        console.log(decoded);
+        // toast.success("You have successfully Logged In");
+        // console.log(decoded);
+
         if (decoded.roles.includes("passenger")) {
           route.replace("/passenger");
+          // window.location.replace("/passenger");
         } else {
           route.replace("/superadmin");
+          // window.location.replace("/superadmin");
         }
       }
     } catch (error) {
+      console.log(error);
       if (axios.isAxiosError(error)) {
-        toast.warning(error.response?.data.detail);
+        if (error.response?.data.detail) {
+          toast.error(error.response?.data.detail);
+        } else {
+          toast.warning(error.response?.data.error);
+        }
       }
     }
   };
