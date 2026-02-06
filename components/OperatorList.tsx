@@ -52,6 +52,7 @@ import {
 import InfoRow from "./InfoRow";
 import { useOperator, useUsers } from "./Query";
 import axios from "axios";
+import { exportToCSV } from "@/lib/common_functions";
 
 export default function OperatorList() {
   const [displayCount, setDisplayCount] = useState("10");
@@ -63,13 +64,18 @@ export default function OperatorList() {
   const [detailToggle, setDetailToggle] = useState(false);
   const [detail, setDetail] = useState<Operator>();
   const [spinning, setSpinning] = useState<boolean>(false);
-  const { data, isLoading, refetch } = useOperator();
-  const { data: users, ...rest } = useUsers();
-
-  const filteredOperators = data?.filter(
+  const { data, isLoading, refetch } = useOperator(
+    currentPage,
+    Number(displayCount),
+  );
+  const { data: users, ...rest } = useUsers(); //make all
+  const filteredUsers =
+    users?.items?.filter((u) => u.roles[0]?.name == "Operator Admin") ?? [];
+  console.log(users);
+  const filteredOperators = data?.items?.filter(
     (emp) =>
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.contact_email.toLowerCase().includes(searchTerm.toLowerCase())
+      emp.contact_email.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   async function handleViewDetail(id: string) {
@@ -79,6 +85,9 @@ export default function OperatorList() {
       setDetailToggle(true);
     }
   }
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [displayCount]);
 
   async function handleDelete(id: string) {
     const response = await superAdminApi.deleteOperator(id);
@@ -130,7 +139,7 @@ export default function OperatorList() {
     } catch (error) {
       console.log(error);
       if (axios.isAxiosError(error)) {
-        toast.error(error.response?.data.detail);
+        toast.error(error.response?.data.error);
       } else if (error instanceof Error) {
         toast.error(error.message);
       }
@@ -138,7 +147,7 @@ export default function OperatorList() {
   }
 
   async function handleRefetch(
-    event: React.MouseEvent<HTMLButtonElement, MouseEvent>
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
   ): Promise<void> {
     event.preventDefault();
     setSpinning(true);
@@ -155,33 +164,37 @@ export default function OperatorList() {
         <AddOperatorModal onSuccess={refetch} />
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md ">
           <DialogHeader>
             <DialogTitle>User List</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-2 mt-4">
-            {users?.map((users) => (
-              <div
-                key={users.id}
-                className="flex justify-between items-center p-2 rounded hover:bg-gray-100"
-              >
-                <div>
-                  <p className="font-medium">
-                    {(users.first_name ?? "") + " " + (users.last_name ?? "")}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    handleAssignOperatorToUser(users.id);
-                  }}
+            {filteredOperators ? (
+              filteredUsers.map((users) => (
+                <div
+                  key={users.id}
+                  className="flex justify-between items-center p-2 rounded hover:bg-gray-100"
                 >
-                  Select
-                </Button>
-              </div>
-            ))}
+                  <div>
+                    <p className="font-medium">
+                      {(users.first_name ?? "") + " " + (users.last_name ?? "")}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      handleAssignOperatorToUser(users.id);
+                    }}
+                  >
+                    Select
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <p>No users available for assignment.</p>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -252,7 +265,6 @@ export default function OperatorList() {
             <span className="text-sm">Entries</span>
           </div>
 
-          {/* Export Buttons */}
           <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
@@ -262,7 +274,23 @@ export default function OperatorList() {
               <Copy className="w-4 h-4" /> Copy
             </Button>
 
-            <Button variant="outline">CSV</Button>
+            <Button
+              variant="outline"
+              disabled={!data}
+              onClick={() =>
+                exportToCSV(
+                  data!.items.map((o) => ({
+                    name: o.name,
+                    email: o.contact_email,
+                    slug: o.slug,
+                    "create at": o.created_at,
+                  })),
+                  ` operators_${new Date()}.csv`,
+                )
+              }
+            >
+              CSV
+            </Button>
             <Button variant="outline">PDF</Button>
             <Button variant="outline">Print</Button>
 
@@ -286,7 +314,7 @@ export default function OperatorList() {
         </div>
 
         {/* Table */}
-        {data?.length === 0 ? (
+        {data?.items.length === 0 ? (
           <p className="text-muted-foreground text-center py-10">
             No operators registered.
           </p>
@@ -305,7 +333,9 @@ export default function OperatorList() {
               <TableBody>
                 {filteredOperators?.map((op, i) => (
                   <TableRow key={op.id} className="hover:bg-muted/30">
-                    <TableCell>{i + 1}</TableCell>
+                    <TableCell>
+                      {(currentPage - 1) * Number(displayCount) + i + 1}
+                    </TableCell>
                     <TableCell>{op.name}</TableCell>
                     <TableCell>{op.contact_email}</TableCell>
                     <TableCell>{op.contact_phone}</TableCell>
@@ -367,21 +397,35 @@ export default function OperatorList() {
         )}
 
         {/* Pagination */}
-        {(data?.length ?? 0) > 0 && (
+        {(data?.items.length ?? 0) > 0 && (
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Showing 1 to {filteredOperators?.length} of{" "}
-              {filteredOperators?.length} entries
+              Showing {(currentPage - 1) * Number(displayCount) + 1} to{" "}
+              {(currentPage - 1) * Number(displayCount) +
+                (filteredOperators?.length ?? 0)}{" "}
+              of {data?.total} entries
             </p>
 
             <div className="flex gap-2">
-              <Button variant="outline" disabled={currentPage === 1}>
+              <Button
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
                 Previous
               </Button>
               <Button className="bg-primary text-primary-foreground">
                 {currentPage}
               </Button>
-              <Button variant="outline">Next</Button>
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                disabled={
+                  (data?.total ?? 0) <= currentPage * Number(displayCount)
+                }
+              >
+                Next
+              </Button>
             </div>
           </div>
         )}

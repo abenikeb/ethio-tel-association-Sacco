@@ -9,6 +9,7 @@ export interface Session {
   id: string;
   created_at?: string;
   user_agent: string;
+  organization_id?: string;
   deviceType: "desktop" | "mobile" | "tablet";
   location: string;
   ip_address: string;
@@ -62,14 +63,31 @@ interface Address {
   kebele: string;
   house_number: string;
 }
+export interface Role {
+  name: string;
+  slug: string;
+}
+
+export type CreateTripPayload = {
+  operator_id?: string;
+
+  bus_id: string;
+  driver_id: string;
+  route_from: string;
+  route_to: string;
+  departure_at: string;
+  price: number;
+};
+
 export interface User {
   sub: string;
-  roles: string[];
+  roles: Role[];
   portal: string;
   first_name: string;
   last_name: string;
   id: string;
   phone?: string;
+  organization_id?: string;
   phone_verified: boolean;
   email: string;
   email_verified: boolean;
@@ -81,10 +99,33 @@ export interface User {
   avatar_file_id: string;
   bio: string;
   address: Address;
+  last_login_at?: string;
 }
+export interface SeatExtraMetadata {
+  type: "window" | "asile"; // or string if other types are possible
+}
+
+export interface Seat {
+  id: string;
+  seat_code: string;
+  status: "available" | "booked" | "held";
+  row: number;
+  col: number;
+  extra_metadata: SeatExtraMetadata;
+}
+
+export interface SeatTemplate {
+  id: string;
+  name: string;
+  seats: Seat[];
+  created_at: string; // ISO date string
+}
+
 export interface Bus {
   id: string;
+  seat_template: SeatTemplate;
   operator_id: string;
+  bus_status: string;
   plate_no: string;
   side_no: string;
   capacity: number;
@@ -109,7 +150,7 @@ export interface Route {
   bus: Bus;
   driver: Driver;
   departure_at: string;
-  price: 0;
+  price: number;
   created_at: string;
   updated_at: string;
 }
@@ -135,6 +176,13 @@ export interface PopularRoutesResponse {
   routes: PopularRoute[];
   total: number;
 }
+export type Passenger = {
+  name: string;
+  email: string;
+  phone: string;
+  id_number: string;
+};
+
 export interface Trip {
   trip_id: string;
   operator: {
@@ -178,4 +226,25 @@ export interface SearchRouteResponse {
   page: number;
   items: Item[];
   per_page: number;
+}
+
+export interface KYCDocument {
+  id: string;
+  owner_type?: "operator" | "agent";
+  owner_id?: string;
+
+  operator_id?: string;
+  operator_name?: string;
+  agent_id?: string;
+  agent_name?: string;
+
+  document_type: string;
+  document_name: string;
+  document_url: string;
+
+  status: "pending" | "approved" | "rejected";
+  uploaded_at: string;
+  reviewed_at?: string;
+
+  uploaded_by?: string;
 }

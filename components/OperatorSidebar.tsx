@@ -1,6 +1,6 @@
 "use client";
 
-import { Bus, Calendar, Home, Users, Settings } from "lucide-react";
+import { Bus, Calendar, Home, Users, Settings, ScanFace } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -19,12 +19,12 @@ import { useState } from "react";
 const menuItems = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/operator",
     icon: Home,
   },
   {
-    title: "Fleet Management",
-    url: "/fleet",
+    title: "Trip Management",
+    url: "/operator/trips",
     icon: Bus,
   },
   {
@@ -37,10 +37,16 @@ const menuItems = [
     url: "/operator/drivers",
     icon: Users,
   },
+  {
+    title: "KYC Documents",
+    url: "/operator/kyc",
+    icon: ScanFace,
+  },
 ];
 
 export function AppSidebar() {
   const path = usePathname();
+
   const [active, setActive] = useState("");
   return (
     <Sidebar>
@@ -67,21 +73,25 @@ export function AppSidebar() {
           </SidebarGroupLabel> */}
           <SidebarGroupContent className="mt-8">
             <SidebarMenu className="gap-5">
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link
-                      href={item.url}
-                      className="flex items-center gap-3 px-6"
-                    >
-                      <item.icon className="size-4 " />
-                      <span className="text-base font-semibold">
-                        {item.title}
-                      </span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems.map((item) => {
+                const isActive = path === item.url;
+
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link
+                        href={item.url}
+                        className="flex items-center gap-3 px-6"
+                      >
+                        <item.icon className="size-4" />
+                        <span className="text-base font-semibold">
+                          {item.title}
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -44,7 +44,6 @@ export function UpdateUserForm() {
 
     try {
       // TODO: Implement API call to update user
-      console.log("[v0] Update user data:", formData);
 
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -78,7 +77,6 @@ export function UpdateUserForm() {
             id="first_name"
             value={formData.first_name}
             onChange={(e) => handleInputChange("first_name", e.target.value)}
-            placeholder="John"
           />
         </div>
 
@@ -88,7 +86,6 @@ export function UpdateUserForm() {
             id="last_name"
             value={formData.last_name}
             onChange={(e) => handleInputChange("last_name", e.target.value)}
-            placeholder="Doe"
           />
         </div>
 
@@ -98,7 +95,6 @@ export function UpdateUserForm() {
             id="display_name"
             value={formData.display_name}
             onChange={(e) => handleInputChange("display_name", e.target.value)}
-            placeholder="johndoe"
           />
         </div>
 
@@ -158,7 +154,7 @@ export function UpdateUserForm() {
         <h3 className="text-sm font-semibold text-foreground">Address</h3>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-2">
+          {/* <div className="flex flex-col gap-2">
             <Label htmlFor="country">Country</Label>
             <Input
               id="country"
@@ -166,7 +162,7 @@ export function UpdateUserForm() {
               onChange={(e) => handleAddressChange("country", e.target.value)}
               placeholder="Ethiopia"
             />
-          </div>
+          </div> */}
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="region">Region</Label>
@@ -174,7 +170,7 @@ export function UpdateUserForm() {
               id="region"
               value={formData.address.region}
               onChange={(e) => handleAddressChange("region", e.target.value)}
-              placeholder="Addis Ababa"
+              // placeholder="Addis Ababa"
             />
           </div>
 
@@ -184,7 +180,7 @@ export function UpdateUserForm() {
               id="city"
               value={formData.address.city}
               onChange={(e) => handleAddressChange("city", e.target.value)}
-              placeholder="Addis Ababa"
+              // placeholder="Addis Ababa"
             />
           </div>
 
@@ -194,7 +190,7 @@ export function UpdateUserForm() {
               id="sub_city"
               value={formData.address.sub_city}
               onChange={(e) => handleAddressChange("sub_city", e.target.value)}
-              placeholder="Bole"
+              // placeholder="Bole"
             />
           </div>
 
@@ -204,7 +200,7 @@ export function UpdateUserForm() {
               id="woreda"
               value={formData.address.woreda}
               onChange={(e) => handleAddressChange("woreda", e.target.value)}
-              placeholder="12"
+              // placeholder="12"
             />
           </div>
 
@@ -214,7 +210,6 @@ export function UpdateUserForm() {
               id="kebele"
               value={formData.address.kebele}
               onChange={(e) => handleAddressChange("kebele", e.target.value)}
-              placeholder="05"
             />
           </div>
 
@@ -226,7 +221,6 @@ export function UpdateUserForm() {
               onChange={(e) =>
                 handleAddressChange("house_number", e.target.value)
               }
-              placeholder="1234"
             />
           </div>
         </div>

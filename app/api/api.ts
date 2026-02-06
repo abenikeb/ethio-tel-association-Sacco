@@ -6,21 +6,15 @@ import {
   getCSRFToken,
   getRefreshToken,
   getSessionId,
-  setAccessToken,
-  setAuthCookies,
 } from "@/lib/auth";
-import {
-  AddOperatorForm,
-  AddUserForm,
-  Agent,
-  LoginResponse,
-} from "@/lib/model";
+import { AddOperatorForm, AddUserForm, Agent, Passenger } from "@/lib/model";
 import axios, {
   AxiosError,
   AxiosRequestConfig,
   AxiosResponse,
   isAxiosError,
 } from "axios";
+import { createDecipheriv } from "crypto";
 
 const api = axios.create({
   baseURL: "/api/proxy",
@@ -43,7 +37,17 @@ const refreshApi = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-}); // THIS IS TO AVOID INFINITE REFRESH LOOP
+});
+const api_webhook = axios.create({
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
+  baseURL: "https://chapa-webhook-bisho.onrender.com",
+  // baseURL: "http://localhost:8000",
+});
+
+// THIS IS TO AVOID INFINITE REFRESH LOOP
 
 // api.interceptors.response.use(
 //   (response) => response,
@@ -101,9 +105,10 @@ api.interceptors.response.use(
       const status = error.response.status;
       const data = error.response.data;
       const code = data.code;
-
+      const detail = data.detail;
+      console.log(data, "error response data");
       if (status === 401) {
-        switch (code) {
+        switch (detail) {
           case "CSRF_MISSING":
           case "CSRF_INVALID":
             // Retry once if not already retried
@@ -125,7 +130,7 @@ api.interceptors.response.use(
             console.error("Refresh token reuse detected — security warning");
             // Optionally show an alert to the user
             alert(
-              "Security alert: Your session was used from another location. Please log in again."
+              "Security alert: Your session was used from another location. Please log in again.",
             );
             window.location.href = "/login";
             break;
@@ -138,6 +143,12 @@ api.interceptors.response.use(
           case "REFRESH_INVALID":
             console.error("Refresh token invalid");
             window.location.href = "/login";
+            break;
+          case "Not authenticated":
+            console.error("Not authenticated — redirecting to login");
+            // window.location.href = "/login";
+            window.location.href = "/login";
+
             break;
 
           case "SESSION_INVALID":
@@ -157,17 +168,18 @@ api.interceptors.response.use(
 
           default:
             console.error("Unhandled 401 error:", data);
-            throw Error();
+            throw error;
         }
-      } else {
-        console.error(`HTTP ${status} error:`, data);
+        // } else {
+        //   console.error(`HTTP ${status} error:`, data);
+        // }
       }
     } else {
       console.error("Network or unknown error:", error.message);
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 api.interceptors.request.use(
@@ -190,14 +202,40 @@ api.interceptors.request.use(
   (error) => {
     console.error("[API Request Error]", error);
     return Promise.reject(error);
-  }
+  },
 );
 
+export const tempAPI = {
+  payment: async (body: {
+    amount: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+    phone_number: string;
+    // client_ref: string;
+    hold_id: string;
+  }) => {
+    const response = await api_webhook.post("/payment", body);
+    console.log(response.data);
+    return response.data;
+  },
+};
+
 export const authAPI = {
+  signup: async (body: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    pin: string; // need attention
+  }) => {
+    const response = await api.post("/auth/register", body);
+    return response.data;
+  },
   login: async (
     identifier: string,
     password: string,
-    remember: boolean
+    remember: boolean,
     // portal: string
   ) => {
     try {
@@ -210,6 +248,7 @@ export const authAPI = {
       return response.data;
     } catch (error) {
       console.log(error);
+      throw error;
     }
   },
   logout: async () => {
@@ -217,16 +256,15 @@ export const authAPI = {
       const session_id = await getSessionId();
       const refresh_token = await getRefreshToken();
 
-      const response = await api.post("/user/me/sessions/logout", {
+      await api.post("/user/me/sessions/logout", {
         refresh_token,
         session_id,
       });
       await deleteAllCookies();
-      return response.data;
-    } catch (error) {
-      console.log(error);
-    } finally {
       window.location.href = "/login";
+    } catch (error) {
+      window.location.href = "/login";
+      console.log(error);
     }
   },
   whoAmI: async () => {
@@ -270,8 +308,13 @@ export const superAdminApi = {
     const response = await api.post("/admin/operators", body);
     return response.data;
   },
-  getOperator: async () => {
-    const response = await api.get("/admin/operators");
+  getOperator: async (page?: number, per_page?: number) => {
+    const response = await api.get("/admin/operators", {
+      params: {
+        page,
+        per_page,
+      },
+    });
     return response.data;
   },
   viewOperatorDetail: async (id: string) => {
@@ -285,29 +328,50 @@ export const superAdminApi = {
   /**
    * This is the user operation below
    */
-  getUsers: async () => {
+  getUsers: async (page?: number, per_page?: number) => {
     try {
-      const response = await api.get(`/admin/users`);
+      const response = await api.get(`/admin/users`, {
+        params: {
+          page,
+          per_page,
+        },
+      });
       return response.data;
     } catch (error) {
       console.log(error, "error from getUsers func");
     }
   },
+  getUser: async (id: string) => {
+    try {
+      const response = await api.get(`/admin/users/${id}`);
+      return response.data;
+    } catch (error) {
+      console.log(error, "error from getUser func");
+    }
+  },
   addUser: async (body: AddUserForm) => {
-    const response = await api.post(`/admin/users`, body);
-    return response.data;
+    try {
+      const response = await api.post(`/admin/users`, body);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   },
   assignOperatorToUser: async (operatorId: string, userId: string) => {
     const response = await api.post(
-      `/admin/operators/${operatorId}/users/${userId}`
+      `/admin/operators/${operatorId}/users/${userId}`,
     );
     // console.log(response);
     return response.data;
   },
   unassignOperatorToUser: async (operatorId: string, userId: string) => {
     const response = await api.delete(
-      `/admin/operators/${operatorId}/users/${userId}`
+      `/admin/operators/${operatorId}/users/${userId}`,
     );
+    return response.data;
+  },
+  getAllOperatorUsers: async (operatorId: string) => {
+    const response = await api.get(`/admin/operators/${operatorId}/users`);
     return response.data;
   },
 
@@ -315,6 +379,12 @@ export const superAdminApi = {
     const response = await api.post(`/admin/users/${role_identifier}/users`, {
       users: [id],
     });
+    return response.data;
+  },
+  unAssignRole: async (id: string, role_identifier: string) => {
+    const response = await api.delete(
+      `/admin/users/${role_identifier}/users/${id}`,
+    );
     return response.data;
   },
   disableUser: async (id: string, reason: string) => {
@@ -330,8 +400,13 @@ export const superAdminApi = {
   /**
    * This is the Agent operation below
    */
-  getAgents: async () => {
-    const response = await api.get("/admin/agents");
+  getAgents: async (page?: number, per_page?: number) => {
+    const response = await api.get("/admin/agents", {
+      params: {
+        page,
+        per_page,
+      },
+    });
 
     return response.data;
   },
@@ -342,6 +417,57 @@ export const superAdminApi = {
   deleteAgent: async (id: string) => {
     const response = await api.delete(`/admin/agents/${id}`);
     console.log(response.data);
+    return response.data;
+  },
+  updateAgent: async (id: string, body: Agent) => {
+    const response = await api.put(`/admin/agents/${id}`, body);
+    return response.data;
+  },
+  assignUserToAgent: async (agent_id: string, user_id: string) => {
+    const response = await api.post(
+      `/admin/agents/${agent_id}/users/${user_id}`,
+    );
+    return response.data;
+  },
+  unassignUserToAgent: async (agent_id: string, user_id: string) => {
+    const response = await api.delete(
+      `/admin/agents/${agent_id}/users/${user_id}`,
+    );
+    return response.data;
+  },
+  /**
+   * This operations is for agent users
+   */
+  getAllAgentUsers: async (agent_id: string) => {
+    const response = await api.get(`/admin/agents/${agent_id}/users`);
+    return response.data;
+  },
+
+  /**
+   * This operations is for super admin KYC documents
+   */
+  verifyKYCdocument: async (operator_id: string, document_id: string) => {
+    const response = await api.put(
+      `/admin/operators/kyc-documents/${operator_id}/${document_id}/verify`,
+      { status: "approved" },
+    );
+    return response.data;
+  },
+  bulkVerifyKYCdocuments: async (
+    operator_id: string,
+    document_ids: string[],
+    status: string,
+  ) => {
+    const response = await api.post(
+      `/admin/operators/kyc-documents/${operator_id}/bulk-verify`,
+      { document_ids, status },
+    );
+    return response.data;
+  },
+  getDetailKYCdocument: async (document_id: string) => {
+    const response = await api.get(
+      `/admin/operators/kyc-documents/${document_id}`,
+    );
     return response.data;
   },
 };
@@ -363,7 +489,7 @@ export const passengerApi = {
   },
   autoComplete: async (
     query: string,
-    type: "origin" | "destination" | "all" = "all"
+    type: "origin" | "destination" | "all" = "all",
   ) => {
     if (query.length < 2) return [];
     const response = await api.get("/passenger/routes/autocomplete", {
@@ -380,20 +506,135 @@ export const passengerApi = {
     return response.data.routes;
   },
   getTripDetails: async (tripId: string) => {
-    const response = await api.get(`/passenger/trips/${tripId}`);
+    const response = await api.get(`/passenger/${tripId}`);
+
     return response.data;
   },
+  holdSeat: async (
+    tripId: string,
+    body: {
+      seat_codes: string[];
+      passenger_details: Passenger[];
+      client_ref: string;
+    },
+  ) => {
+    try {
+      // const uuid = crypto.randomUUID();
+      // console.log({ ...body, client_ref: `client_${uuid}` }, "body here");
+      const response = await api.post(`/passenger/${tripId}/holds`, {
+        ...body,
+        passenger_details: body.passenger_details.map((passenger) => ({
+          ...passenger,
+          name: passenger.phone.trim(),
+        })),
+        // client_ref: uuid,
+      });
+
+      return response.data;
+    } catch (error) {
+      console.log(error, "error from hold seat");
+      throw error;
+    }
+  },
 };
+export const agentApi = {};
 export const operatorApi = {
   createBus: async (
     body: {
-      plate_number: string;
+      plate_no: string;
       capacity: number;
-      side_number?: string;
+      side_no: string;
+      seat_template_id: string;
     },
-    operator_id: string
+    operator_id: string,
   ) => {
-    const response = await api.post(`/operator/${operator_id}/buses`, { body });
+    console.log("data to send", operator_id, body);
+    try {
+      const response = await api.post(`/operator/${operator_id}/buses`, body);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  createDriver: async (
+    body: {
+      first_name: string;
+      last_name: string;
+      license_no: string;
+    },
+    operator_id: string,
+  ) => {
+    try {
+      const response = await api.post(`/operator/${operator_id}/drivers`, body);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  getAllBuses: async (operator_id: string) => {
+    const response = await api.get(`/operator/${operator_id}/buses`);
+    return response.data;
+  },
+  deleteBus: async (operator_id: string, bus_id: string) => {
+    const response = await api.delete(
+      `/operator/${operator_id}/buses/${bus_id}`,
+    );
+    return response.data;
+  },
+
+  createTrip: async (
+    operator_id: string,
+    body: {
+      bus_id: string;
+      driver_id: string;
+      route_from: string;
+      route_to: string;
+      departure_at: string;
+      price: number;
+    },
+  ) => {
+    const response = await api.post(`/operator/${operator_id}/trips`, body);
+    return response.data;
+  },
+
+  deleteDriver: async (operator_id: string, driver_id: string) => {
+    const response = await api.delete(
+      `/operator/${operator_id}/drivers/${driver_id}`,
+    );
+    return response.data;
+  },
+  deleteTrip: async (operator_id: string, trip_id: string) => {
+    const response = await api.delete(
+      `/operator/${operator_id}/trips/${trip_id}`,
+    );
+    return response.data;
+  },
+  getAllTrips: async (operator_id: string, limit: number) => {
+    const response = await api.get(`/operator/${operator_id}/trips`, {
+      params: { limit },
+    });
+    return response.data;
+  },
+  getAllDrivers: async (operator_id: string) => {
+    const response = await api.get(`/operator/${operator_id}/drivers`);
+    return response.data;
+  },
+  getAllSeatTemplates: async (operator_id: string) => {
+    try {
+      console.log(operator_id, "operator id here");
+      const response = await api.get(`/operator/${operator_id}/seat-templates`);
+      console.log(response.data.items, "seat templates response");
+      return response.data.items;
+    } catch (error) {
+      console.log(error, "error from get all seat templates");
+    }
+  },
+  /**This is the KYC apis */
+
+  getKYCdocuments: async (operator_id: string) => {
+    const response = await api.get(`/operator/${operator_id}/kyc-documents`);
+
     return response.data;
   },
 };

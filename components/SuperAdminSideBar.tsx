@@ -13,6 +13,7 @@ import {
   Users,
   Zap,
   ChevronDown,
+  ScanFace,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -53,13 +54,13 @@ export default function Sidebar() {
 
       subItems: [
         { label: "Operator List", href: "/superadmin/operator" },
-        { label: "Manage Operators", href: "/superadmin/operator/manage" },
+        { label: "Operator Users", href: "/superadmin/operator/manage" },
       ],
     },
     { icon: BarChart3, label: "Report", href: "/report" },
-    { icon: HelpCircle, label: "Inquiry", href: "/inquiry" },
+    { icon: ScanFace, label: "KYC Approval", href: "/superadmin/kyc" },
     { icon: Luggage, label: "Luggage", href: "/luggage" },
-    { icon: AlertCircle, label: "Settings", href: "/settings" },
+    { icon: AlertCircle, label: "Settings", href: "/superadmin/settings" },
   ];
 
   const pathname = usePathname();

@@ -38,8 +38,6 @@ import { AddOperatorModal } from "./AddOperatorModal";
 import { superAdminApi } from "@/app/api/api";
 import { toast } from "sonner";
 import { Operator } from "@/lib/model";
-
-import { Card, CardContent } from "./ui/card";
 import {
   Dialog,
   DialogContent,
@@ -60,17 +58,24 @@ export default function AgentList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [open, setOpen] = useState(false);
   // const [userId, setUserId] = useState("");
-  const [operatorId, setOperatorId] = useState("");
+  const [agentId, setAgentId] = useState("");
   const [detailToggle, setDetailToggle] = useState(false);
   const [detail, setDetail] = useState<Operator>();
   const [spinning, setSpinning] = useState<boolean>(false);
-  const { data, isLoading, refetch } = useAgent();
+  const { data, isLoading, refetch } = useAgent(
+    currentPage,
+    Number(displayCount),
+  );
+  const { data: users } = useUsers(10, 10); // make default all
 
-  const filteredOperators = data?.filter(
+  const filteredAgents = data?.items.filter(
     (emp) =>
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.contact_email.toLowerCase().includes(searchTerm.toLowerCase())
+      emp.contact_email.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [displayCount]);
 
   async function handleViewDetail(id: string) {
     const res = await superAdminApi.viewOperatorDetail(id);
@@ -92,7 +97,7 @@ export default function AgentList() {
       if (axios.isAxiosError(error)) {
         if (error.status == 404) {
           toast.warning(
-            error.response?.data.detail || "The agent doesn't exist "
+            error.response?.data.detail || "The agent doesn't exist ",
           );
           return;
         }
@@ -110,21 +115,21 @@ export default function AgentList() {
   }
 
   async function handleCopy() {
-    if (!filteredOperators?.length) {
+    if (!filteredAgents?.length) {
       toast.warning("Nothing to copy");
       return;
     }
     const jsonData = {
       metadata: {
         exported_at: new Date().toISOString(),
-        total_operators: filteredOperators?.length,
+        total_operators: filteredAgents?.length,
         source: "Agent Management System",
       },
-      operators: filteredOperators,
+      operators: filteredAgents,
     };
 
     await navigator.clipboard.writeText(JSON.stringify(jsonData, null, 2));
-    toast.success(`Copied ${filteredOperators.length} agents`);
+    toast.success(`Copied ${filteredAgents.length} agents`);
   }
   if (isLoading) {
     return (
@@ -133,15 +138,15 @@ export default function AgentList() {
       </div>
     );
   }
-  async function handleAssignOperatorToUser(userId: string) {
+  async function handleAssignAgentToUser(userId: string) {
     try {
-      const res = await superAdminApi.assignOperatorToUser(operatorId, userId);
+      const res = await superAdminApi.assignOperatorToUser(agentId, userId);
       console.log(res);
       toast.success("Successfully assigned the user to the operator");
     } catch (error) {
       console.log(error);
       if (axios.isAxiosError(error)) {
-        toast.error(error.response?.data.detail);
+        toast.error(error.response?.data.error);
       } else if (error instanceof Error) {
         toast.error(error.message);
       }
@@ -149,7 +154,7 @@ export default function AgentList() {
   }
 
   async function handleRefetch(
-    event: React.MouseEvent<HTMLButtonElement, MouseEvent>
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
   ): Promise<void> {
     event.preventDefault();
     setSpinning(true);
@@ -165,14 +170,14 @@ export default function AgentList() {
         </h1>
         <AddAgentModal onSuccess={refetch} />
       </div>
-      {/* <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Agent List</DialogTitle>
+            <DialogTitle>User List</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-2 mt-4">
-            {users?.map((users) => (
+            {users?.items.map((users) => (
               <div
                 key={users.id}
                 className="flex justify-between items-center p-2 rounded hover:bg-gray-100"
@@ -186,7 +191,7 @@ export default function AgentList() {
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    handleAssignOperatorToUser(users.id);
+                    handleAssignAgentToUser(users.id);
                   }}
                 >
                   Select
@@ -195,7 +200,7 @@ export default function AgentList() {
             ))}
           </div>
         </DialogContent>
-      </Dialog> */}
+      </Dialog>
 
       <Dialog open={detailToggle} onOpenChange={setDetailToggle}>
         <DialogOverlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" />
@@ -297,7 +302,7 @@ export default function AgentList() {
         </div>
 
         {/* Table */}
-        {data?.length === 0 ? (
+        {data?.items.length === 0 ? (
           <p className="text-muted-foreground text-center py-10">
             No Agent registered.
           </p>
@@ -314,14 +319,35 @@ export default function AgentList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOperators?.map((op, i) => (
+                {filteredAgents?.map((op, i) => (
                   <TableRow key={op.id} className="hover:bg-muted/30">
-                    <TableCell>{i + 1}</TableCell>
+                    <TableCell>
+                      {(currentPage - 1) * Number(displayCount) + i + 1}
+                    </TableCell>
                     <TableCell>{op.name}</TableCell>
                     <TableCell>{op.contact_email}</TableCell>
                     <TableCell>{op.contact_phone}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex gap-2 justify-center">
+                        <div className="relative inline-block group">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-black p-2 flex items-center gap-1"
+                            onClick={() => {
+                              setAgentId(op.id!);
+                              setOpen(true);
+                            }}
+                          >
+                            Assign
+                            <CircleQuestionMark className="text-blue-600 cursor-pointer" />
+                          </Button>
+
+                          <pre className="z-90 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 rounded bg-gray-700 px-3 py-1 max-w-xs text-white text-xs text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 break-words pointer-events-none shadow-lg">
+                            This will enable you to assign {`\n`} a user to this
+                            agent
+                          </pre>
+                        </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
@@ -359,21 +385,32 @@ export default function AgentList() {
         )}
 
         {/* Pagination */}
-        {(data?.length ?? 0) > 0 && (
+        {(data?.items.length ?? 0) > 0 && (
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Showing 1 to {filteredOperators?.length} of{" "}
-              {filteredOperators?.length} entries
+              Showing {(currentPage - 1) * Number(displayCount) + 1} to{" "}
+              {(currentPage - 1) * Number(displayCount) +
+                (filteredAgents?.length ?? 0)}{" "}
+              of {data?.total} entries
             </p>
 
             <div className="flex gap-2">
-              <Button variant="outline" disabled={currentPage === 1}>
+              <Button
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
                 Previous
               </Button>
               <Button className="bg-primary text-primary-foreground">
                 {currentPage}
               </Button>
-              <Button variant="outline">Next</Button>
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                Next
+              </Button>
             </div>
           </div>
         )}

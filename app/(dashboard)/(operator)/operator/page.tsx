@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -71,37 +71,46 @@ import {
   MapPin,
   Calendar,
   Users,
+  RefreshCcw,
 } from "lucide-react";
 import { operatorApi } from "@/app/api/api";
 import { useAuth } from "@/lib/authContext";
+import { useOperatorBuses } from "@/components/Query";
+import { Bus, SeatTemplate } from "@/lib/model";
+import { pl } from "zod/v4/locales";
+import { set } from "zod";
+import SeatTemplateDialog from "@/components/SeatTemplateModal";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { toast, Toaster } from "sonner";
+import { isAxiosError } from "axios";
 
-type BusStatus = "Active" | "Maintenance" | "Deactivated";
+type BusStatus = "active" | "inactive";
 
-interface FleetBus {
-  id: string;
-  plate_number: string;
-  side_no: string;
-  status: BusStatus;
-  capacity: number;
+// interface FleetBus {
+//   id: string;
+//   plate_number: string;
+//   side_no: string;
+//   status: BusStatus;
+//   capacity: number;
 
-  seats: { row: number; col: number; available: boolean }[];
-}
+//   seats: { row: number; col: number; available: boolean }[];
+// }
 
-const initialBuses: FleetBus[] = [
-  {
-    id: "1",
-    plate_number: "MH-12-AB-1234",
-    side_no: "S-001",
-    status: "Active",
-    capacity: 45,
-    // facilities: ["AC", "WiFi", "USB Charging"],
-    seats: Array.from({ length: 45 }, (_, i) => ({
-      row: Math.floor(i / 4) + 1,
-      col: (i % 4) + 1,
-      available: true,
-    })),
-  },
-];
+// const initialBuses: FleetBus[] = [
+//   {
+//     id: "1",
+//     plate_number: "MH-12-AB-1234",
+//     side_no: "S-001",
+//     status: "Active",
+//     capacity: 45,
+//     // facilities: ["AC", "WiFi", "USB Charging"],
+//     seats: Array.from({ length: 45 }, (_, i) => ({
+//       row: Math.floor(i / 4) + 1,
+//       col: (i % 4) + 1,
+//       available: true,
+//     })),
+//   },
+// ];
 
 const scheduleOptions = [
   { id: "1", route: "Mumbai - Pune", time: "06:00 AM" },
@@ -109,11 +118,19 @@ const scheduleOptions = [
   { id: "3", route: "Mumbai - Goa", time: "10:00 AM" },
   { id: "4", route: "Pune - Bangalore", time: "07:00 PM" },
 ];
+interface createBusRequest extends Bus {
+  plate_no: string;
+  side_no: string;
+  capacity: number;
+  seat_template_id: string;
+  bus_status: "active" | "inactive";
+  // facilities: [] as string[],
+}
 
 export default function OperatorPage() {
-  const [buses, setBuses] = useState<FleetBus[]>(initialBuses);
+  const [buses, setBuses] = useState<Bus[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedBus, setSelectedBus] = useState<FleetBus | null>(null);
+  const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isAddBusOpen, setIsAddBusOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -122,85 +139,157 @@ export default function OperatorPage() {
   const [isAssignTripOpen, setIsAssignTripOpen] = useState(false);
   const [busToAssign, setBusToAssign] = useState<string | null>(null);
   const { user } = useAuth();
+  const [seatTemplates, setSeatTemplates] = useState<SeatTemplate[]>();
+  const {
+    data: operatorBuses,
+    isLoading,
+    isError,
+  } = useOperatorBuses(user?.organization_id!);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  );
+  // Improved loading check that handles Auth delay AND State Sync delay
+  const isPageLoading =
+    isLoading ||
+    !user?.organization_id ||
+    (operatorBuses && operatorBuses.length > 0 && buses.length === 0);
 
-  // New bus form state
+  useEffect(() => {
+    if (!operatorBuses || !user?.organization_id) return;
+
+    setBuses(operatorBuses);
+
+    operatorApi
+      .getAllSeatTemplates(user.organization_id)
+      .then(setSeatTemplates)
+      .catch(console.error);
+  }, [operatorBuses, user?.organization_id]);
+
   const [newBus, setNewBus] = useState({
-    plate_number: "",
+    plate_no: "",
     side_no: "",
-    capacity: 45,
+    capacity: 0,
+    seat_template_id: "",
+    bus_status: "active",
+
     // facilities: [] as string[],
   });
 
-  const filteredBuses = buses.filter((bus) =>
-    bus.plate_number.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredBuses =
+    buses?.filter(
+      (bus: Bus) =>
+        bus.plate_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        bus.side_no.toLowerCase().includes(searchQuery.toLowerCase()),
+    ) ?? [];
 
-  const handleViewDetails = (bus: FleetBus) => {
+  const handleViewDetails = (bus: Bus) => {
     setSelectedBus(bus);
     setIsDetailsOpen(true);
+  };
+  const [selectedTemplate, setSelectedTemplate] = useState<SeatTemplate>();
+
+  const handleTemplateSelect = (template: SeatTemplate) => {
+    console.log("Selected template:", template);
+    setSelectedTemplate(template);
   };
 
   const handleStatusChange = (busId: string, newStatus: BusStatus) => {
     setBuses((prev) =>
       prev.map((bus) =>
-        bus.id === busId ? { ...bus, status: newStatus } : bus
-      )
+        bus.id === busId ? { ...bus, status: newStatus } : bus,
+      ),
     );
   };
 
-  const handleDeleteBus = () => {
+  const handleDeleteBus = async () => {
     if (busToDelete) {
       setBuses((prev) => prev.filter((bus) => bus.id !== busToDelete));
+      await operatorApi.deleteBus(user?.organization_id || "", busToDelete);
       setBusToDelete(null);
       setIsDeleteDialogOpen(false);
     }
   };
 
   const handleAddBus = async () => {
-    const bus: FleetBus = {
-      id: String(buses.length + 1),
+    const bus: createBusRequest = {
       ...newBus,
-      status: "Active",
-      seats: Array.from({ length: newBus.capacity }, (_, i) => ({
-        row: Math.floor(i / 4) + 1,
-        col: (i % 4) + 1,
-        available: true,
-      })),
-    };
-    setBuses((prev) => [...prev, bus]);
-    setIsAddBusOpen(false);
-    setAddBusStep(1);
 
-    operatorApi.createBus(newBus, user?.id || "");
-    setNewBus({ plate_number: "", capacity: 45, side_no: "" });
+      bus_status: "active",
+      seat_template_id: selectedTemplateId ?? "",
+      created_at: new Date().toString(),
+      operator_id: user?.organization_id ?? "",
+      updated_at: new Date().toString(),
+      id: Date.now().toString(),
+      seat_template: selectedTemplate!,
+    };
+
+    console.log(newBus, "new bus");
+
+    setAddBusStep(1);
+    const dataT = {
+      plate_no: bus.plate_no,
+      side_no: bus.side_no,
+      capacity: bus.capacity,
+      seat_template_id: bus.seat_template_id,
+      bus_status: bus.bus_status,
+    };
+
+    try {
+      await operatorApi.createBus(dataT, user?.organization_id || "");
+
+      setIsAddBusOpen(false);
+      if (selectedTemplateId) {
+        setNewBus((prev) => ({
+          ...prev,
+          seat_template_id: selectedTemplateId,
+        }));
+        setBuses((prev) => [...prev, bus]);
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error(error.response?.data.error);
+      } else if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("An error occurred while trying to add the bus");
+      }
+    } finally {
+      setNewBus({
+        plate_no: "",
+        capacity: 0,
+        side_no: "",
+        seat_template_id: "",
+        bus_status: "active",
+      });
+    }
   };
 
-  const handleUpdateBus = (updatedBus: FleetBus) => {
+  const handleUpdateBus = (updatedBus: Bus) => {
     setBuses((prev) =>
-      prev.map((bus) => (bus.id === updatedBus.id ? updatedBus : bus))
+      prev.map((bus) => (bus.id === updatedBus.id ? updatedBus : bus)),
     );
     setSelectedBus(updatedBus);
   };
 
   const getStatusColor = (status: BusStatus) => {
     switch (status) {
-      case "Active":
+      case "active":
         return "bg-primary/20 text-primary border-primary/30";
-      case "Maintenance":
-        return "bg-chart-3/20 text-chart-3 border-chart-3/30";
-      case "Deactivated":
+
+      case "inactive":
         return "bg-muted text-muted-foreground border-border";
     }
   };
 
-  const activeCount = buses.filter((b) => b.status === "Active").length;
+  const activeCount = buses.filter((b) => b.bus_status === "active").length;
   const maintenanceCount = buses.filter(
-    (b) => b.status === "Maintenance"
+    (b) => b.bus_status === "inactive",
   ).length;
   const totalCapacity = buses.reduce((sum, b) => sum + b.capacity, 0);
 
   return (
     <div className="flex flex-col">
+      <Toaster position="top-right" richColors />
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex h-16 items-center gap-4 px-6">
@@ -217,7 +306,7 @@ export default function OperatorPage() {
       {/* Main Content */}
       <div className="flex-1 space-y-6 p-6">
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Buses</CardTitle>
@@ -240,8 +329,8 @@ export default function OperatorPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Maintenance</CardTitle>
-              <div className="size-2 rounded-full bg-chart-3" />
+              <CardTitle className="text-sm font-medium">Inactive</CardTitle>
+              <div className="size-2 rounded-full bg-red-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{maintenanceCount}</div>
@@ -262,7 +351,6 @@ export default function OperatorPage() {
           </Card>
         </div>
 
-        {/* Fleet Table */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -272,6 +360,7 @@ export default function OperatorPage() {
                   View and manage all buses in your fleet
                 </CardDescription>
               </div>
+
               <div className="relative w-64">
                 <Search className="absolute left-2 top-2.5 size-4 text-muted-foreground" />
                 <Input
@@ -288,29 +377,48 @@ export default function OperatorPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>License Plate</TableHead>
-                  {/* <TableHead>Model</TableHead> */}
+                  <TableHead>Side Number</TableHead>
                   <TableHead>Status</TableHead>
+
                   <TableHead>Capacity</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBuses.map((bus) => (
+                {isPageLoading && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-6">
+                      Loading buses...
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {!isPageLoading && filteredBuses.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-6">
+                      No buses found
+                    </TableCell>
+                  </TableRow>
+                )}
+                {filteredBuses?.map((bus: Bus) => (
                   <TableRow
                     key={bus.id}
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleViewDetails(bus)}
                   >
                     <TableCell className="font-mono font-medium">
-                      {bus.plate_number}
+                      {bus.plate_no}
+                    </TableCell>
+                    <TableCell className="font-mono font-medium">
+                      {bus.side_no}
                     </TableCell>
                     {/* <TableCell>{bus.model}</TableCell> */}
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={getStatusColor(bus.status)}
+                        className={getStatusColor(bus.bus_status as BusStatus)}
                       >
-                        {bus.status}
+                        {bus.bus_status}
                       </Badge>
                     </TableCell>
                     <TableCell>{bus.capacity} seats</TableCell>
@@ -325,8 +433,6 @@ export default function OperatorPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
@@ -347,11 +453,11 @@ export default function OperatorPage() {
                             Assign Trip
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                          {/* <DropdownMenuLabel>Change Status</DropdownMenuLabel> */}
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStatusChange(bus.id, "Active");
+                              handleStatusChange(bus.id, "active");
                             }}
                           >
                             Set Active
@@ -359,19 +465,19 @@ export default function OperatorPage() {
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStatusChange(bus.id, "Maintenance");
+                              handleStatusChange(bus.id, "inactive");
                             }}
                           >
-                            Set Maintenance
+                            Set Inactive
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStatusChange(bus.id, "Deactivated");
                             }}
                           >
-                            Deactivate
+                            Add Seatmap
                           </DropdownMenuItem>
+
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"
@@ -396,7 +502,7 @@ export default function OperatorPage() {
       </div>
 
       <Sheet open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+        <SheetContent className="w-full p-6 sm:max-w-2xl overflow-y-auto">
           {selectedBus && (
             <>
               <SheetHeader>
@@ -416,18 +522,18 @@ export default function OperatorPage() {
                       <Label htmlFor="license">License Plate</Label>
                       <Input
                         id="license"
-                        value={selectedBus.plate_number}
+                        value={selectedBus.plate_no}
                         onChange={(e) =>
                           handleUpdateBus({
                             ...selectedBus,
-                            plate_number: e.target.value,
+                            plate_no: e.target.value,
                           })
                         }
                         className="font-mono"
                       />
                     </div>
 
-                    <div className="space-y-2">
+                    {/* <div className="space-y-2">
                       <Label htmlFor="status">Status</Label>
                       <Select
                         value={selectedBus.status}
@@ -448,7 +554,7 @@ export default function OperatorPage() {
                           </SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
+                    </div> */}
                     <div className="space-y-2">
                       <Label htmlFor="capacity">Capacity</Label>
                       <Input
@@ -488,7 +594,8 @@ export default function OperatorPage() {
                         variant="outline"
                         className="bg-primary/10 text-primary"
                       >
-                        {Math.ceil(selectedBus.capacity / 4)} rows × 4 columns
+                        {`${Math.ceil(selectedBus.capacity / 4)}  `} rows × 4
+                        columns
                       </Badge>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-6">
@@ -501,14 +608,14 @@ export default function OperatorPage() {
                         className="grid gap-3"
                         style={{ gridTemplateColumns: "repeat(4, 1fr)" }}
                       >
-                        {selectedBus.seats.map((seat, idx) => (
+                        {/* {selectedBus..map((seat, idx) => (
                           <div
                             key={idx}
                             className="flex aspect-square items-center justify-center rounded-md border border-border bg-card text-xs font-medium"
                           >
                             {idx + 1}
                           </div>
-                        ))}
+                        ))} */}
                       </div>
                     </div>
                   </div>
@@ -537,9 +644,9 @@ export default function OperatorPage() {
                 <Input
                   id="new-license"
                   placeholder="MH-12-XX-0000"
-                  value={newBus.plate_number}
+                  value={newBus.plate_no}
                   onChange={(e) =>
-                    setNewBus({ ...newBus, plate_number: e.target.value })
+                    setNewBus({ ...newBus, plate_no: e.target.value })
                   }
                   className="font-mono"
                 />
@@ -552,6 +659,19 @@ export default function OperatorPage() {
                   value={newBus.side_no}
                   onChange={(e) =>
                     setNewBus({ ...newBus, side_no: e.target.value })
+                  }
+                  className="font-mono"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-license">Capacity</Label>
+                <Input
+                  id="capacity"
+                  type="number"
+                  // placeholder="MH-12-XX-0000"
+                  value={newBus.capacity}
+                  onChange={(e) =>
+                    setNewBus({ ...newBus, capacity: Number(e.target.value) })
                   }
                   className="font-mono"
                 />
@@ -577,56 +697,75 @@ export default function OperatorPage() {
             </div>
           ) : (
             <div className="space-y-4 py-4 overflow-auto">
-              <div className="space-y-2">
-                <Label htmlFor="new-capacity">Seating Capacity</Label>
-                <Input
-                  id="new-capacity"
-                  type="number"
-                  min="20"
-                  max="60"
-                  value={newBus.capacity}
-                  onChange={(e) =>
-                    setNewBus({
-                      ...newBus,
-                      capacity: Number.parseInt(e.target.value),
-                    })
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Layout will be generated as {Math.ceil(newBus.capacity / 4)}{" "}
-                  rows × 4 columns
-                </p>
-              </div>
-              <div className="rounded-lg border border-border bg-muted/30 p-4">
-                <div className="mb-3 flex items-center justify-center">
-                  <div className="rounded-md bg-secondary px-3 py-1.5 text-xs font-medium">
-                    Driver
-                  </div>
-                </div>
-                <div
-                  className="grid gap-2"
-                  style={{ gridTemplateColumns: "repeat(4, 1fr)" }}
+              {seatTemplates ? (
+                <RadioGroup
+                  value={selectedTemplateId || undefined}
+                  onValueChange={(value) => setSelectedTemplateId(value)}
+                  className="flex flex-col space-y-2 mt-4"
                 >
-                  {Array.from(
-                    { length: Math.min(newBus.capacity, 16) },
-                    (_, i) => (
-                      <div
-                        key={i}
-                        className="flex aspect-square items-center justify-center rounded-md border border-border bg-card text-xs font-medium"
-                      >
-                        {i + 1}
-                      </div>
-                    )
+                  {seatTemplates.map((template) => (
+                    <div
+                      key={template.id}
+                      className="flex items-center space-x-2"
+                    >
+                      <RadioGroupItem value={template.id} id={template.id} />
+                      <Label htmlFor={template.id}>{template.name}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              ) : (
+                <div className="rounded-lg border border-border bg-muted/30 p-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-capacity">Seating Capacity</Label>
+                    <Input
+                      id="new-capacity"
+                      type="number"
+                      min="20"
+                      max="60"
+                      value={newBus.capacity}
+                      onChange={(e) =>
+                        setNewBus({
+                          ...newBus,
+                          capacity: Number.parseInt(e.target.value),
+                        })
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Layout will be generated as{" "}
+                      {Math.ceil(newBus.capacity / 4)} rows × 4 columns
+                    </p>
+                  </div>
+                  <div className="mb-3 flex items-center justify-center">
+                    <div className="rounded-md bg-secondary px-3 py-1.5 text-xs font-medium">
+                      Driver
+                    </div>
+                  </div>
+                  <div
+                    className="grid gap-2"
+                    style={{ gridTemplateColumns: "repeat(4, 1fr)" }}
+                  >
+                    {Array.from(
+                      { length: Math.min(newBus.capacity, 16) },
+                      (_, i) => (
+                        <div
+                          key={i}
+                          className="flex aspect-square items-center justify-center rounded-md border border-border bg-card text-xs font-medium"
+                        >
+                          {i + 1}
+                        </div>
+                      ),
+                    )}
+                  </div>
+                  {newBus.capacity > 16 && (
+                    <p className="mt-2 text-center text-xs text-muted-foreground">
+                      + {newBus.capacity - 16} more seats
+                    </p>
                   )}
                 </div>
-                {newBus.capacity > 16 && (
-                  <p className="mt-2 text-center text-xs text-muted-foreground">
-                    + {newBus.capacity - 16} more seats
-                  </p>
-                )}
-              </div>
+              )}
             </div>
           )}
+
           <DialogFooter>
             {addBusStep === 2 && (
               <Button variant="outline" onClick={() => setAddBusStep(1)}>
@@ -636,7 +775,7 @@ export default function OperatorPage() {
             {addBusStep === 1 ? (
               <Button
                 onClick={() => setAddBusStep(2)}
-                disabled={!newBus.plate_number}
+                disabled={!newBus.plate_no}
               >
                 Next
               </Button>
