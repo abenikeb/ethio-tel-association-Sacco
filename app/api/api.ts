@@ -21,7 +21,7 @@ const api = axios.create({
 
   headers: {
     "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY,
-    "Content-Type": "application/json",
+    // "Content-Type": "application/json",
     Accept: "application/json",
   },
 
@@ -29,6 +29,7 @@ const api = axios.create({
   decompress: true,
   withCredentials: true,
 });
+
 const refreshApi = axios.create({
   baseURL: "/api/proxy",
   withCredentials: true,
@@ -47,55 +48,6 @@ const api_webhook = axios.create({
   // baseURL: "http://localhost:8000",
 });
 
-// THIS IS TO AVOID INFINITE REFRESH LOOP
-
-// api.interceptors.response.use(
-//   (response) => response,
-//   async (error) => {
-//     const originalRequest = error.config;
-
-//     if (
-//       error.response?.status === 401 &&
-//       !originalRequest._retry &&
-//       !originalRequest.url?.includes("/auth/refresh") &&
-//       error.response?.data?.detail !== "Invalid credentials "
-//     ) {
-//       originalRequest._retry = true;
-//       console.log("401 INTERCEPTOR");
-
-//       const refreshToken = await getRefreshToken();
-
-//       if (!refreshToken) {
-//         return Promise.reject(error);
-//       }
-
-//       try {
-//         const { data } = await refreshApi.post("/auth/refresh", {
-//           refresh_token: refreshToken,
-//         });
-//         originalRequest.headers = {
-//           ...originalRequest.headers,
-//           Authorization: `Bearer ${data.access_token}`,
-//         };
-
-//         await setAccessToken(data.access_token, data.access_expiry);
-
-//         return api(originalRequest); // retry original request
-//       } catch (refreshError) {
-//         if (AxiosError.isError(refreshError)){
-//           refreshError.da
-//         }
-//         // window.location.href = "/login";
-//         console.log(refreshError, "here is the error");
-//         return Promise.reject(refreshError);
-//       }
-//     }
-
-//     return Promise.reject(error);
-//   }
-// );
-
-// 409 interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -106,7 +58,7 @@ api.interceptors.response.use(
       const data = error.response.data;
       const code = data.code;
       const detail = data.detail;
-      console.log(data, "error response data");
+      console.log(error, "error response data");
       if (status === 401) {
         switch (detail) {
           case "CSRF_MISSING":
@@ -220,6 +172,77 @@ export const tempAPI = {
     return response.data;
   },
 };
+export const kycApi = {
+  operatorUploadKyc: async (
+    body: {
+      document_name: string;
+      document_type: string;
+      file: File;
+    },
+    operator_id: string,
+  ) => {
+    try {
+      const formData = new FormData();
+
+      formData.append("document_name", body.document_name);
+      formData.append("document_type", body.document_type);
+      formData.append("file", body.file!);
+
+      console.log("Uploading KYC document with data:", {
+        document_name: body.document_name,
+        document_type: body.document_type,
+        file: body.file.name,
+        operator_id,
+      });
+      const response = await api.post(
+        `/operator/${operator_id}/kyc-documents`,
+        formData,
+        // {
+        //   headers: {
+        //     "Content-Type": "multipart/form-data",
+        //   },
+        // },
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("KYC upload failed:", error);
+      throw error;
+    }
+  },
+  agentUploadKyc: async (
+    body: {
+      document_name: string;
+      document_type: string;
+      file: File;
+    },
+    agent_id: string,
+  ) => {
+    try {
+      const formData = new FormData();
+
+      formData.append("document_name", body.document_name);
+      formData.append("document_type", body.document_type);
+      formData.append("file", body.file!);
+
+      console.log("Uploading KYC document with data:", {
+        document_name: body.document_name,
+        document_type: body.document_type,
+        file: body.file.name,
+        agent_id,
+      });
+      const response = await api.post(
+        `/agent/${agent_id}/kyc-documents`,
+        formData,
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("KYC upload failed:", error);
+      throw error;
+    }
+  },
+};
 
 export const authAPI = {
   signup: async (body: {
@@ -227,8 +250,9 @@ export const authAPI = {
     last_name: string;
     email: string;
     phone: string;
-    pin: string; // need attention
+    password: string; // need attention
   }) => {
+    console.log(body, "signup body");
     const response = await api.post("/auth/register", body);
     return response.data;
   },
@@ -446,10 +470,29 @@ export const superAdminApi = {
   /**
    * This operations is for super admin KYC documents
    */
-  verifyKYCdocument: async (operator_id: string, document_id: string) => {
+  getAllOperatorKYCdocuments: async (page?: number, per_page?: number) => {
+    try {
+      const response = await api.get("/admin/operators/kyc-documents", {
+        params: {
+          page,
+          per_page,
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      console.log(error, "error from getAllOperatorKYCdocuments func");
+      throw error;
+    }
+  },
+  verifyKYCdocument: async (
+    operator_id: string,
+    document_id: string,
+    status: string,
+  ) => {
     const response = await api.put(
       `/admin/operators/kyc-documents/${operator_id}/${document_id}/verify`,
-      { status: "approved" },
+      { status },
     );
     return response.data;
   },
@@ -467,6 +510,55 @@ export const superAdminApi = {
   getDetailKYCdocument: async (document_id: string) => {
     const response = await api.get(
       `/admin/operators/kyc-documents/${document_id}`,
+    );
+    return response.data;
+  },
+  deleteKYCdocument: async (operator_id: string, document_id: string) => {
+    try {
+      const response = await api.delete(
+        `/operator/${operator_id}/kyc-documents/${document_id}`,
+      );
+      console.log(response.data, "delete kyc document response");
+      return response.data;
+    } catch (error) {
+      console.log(error, "error from deleteKYCdocument func");
+      throw error;
+    }
+  },
+
+  getAllAgentKYCdocuments: async (page?: number, per_page?: number) => {
+    try {
+      const response = await api.get("/admin/agents/kyc-documents", {
+        params: {
+          page,
+          per_page,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.log(error, "error from getAllAgentKYCdocuments func");
+      throw error;
+    }
+  },
+  verifyAgentKYCdocument: async (
+    agent_id: string,
+    document_id: string,
+    status: string,
+  ) => {
+    const response = await api.put(
+      `/admin/agents/kyc-documents/${agent_id}/${document_id}/verify`,
+      { status },
+    );
+    return response.data;
+  },
+  bulkVerifyAgentKYCdocuments: async (
+    agent_id: string,
+    document_ids: string[],
+    status: string,
+  ) => {
+    const response = await api.post(
+      `/admin/agents/kyc-documents/${agent_id}/bulk-verify`,
+      { document_ids, status },
     );
     return response.data;
   },
@@ -537,7 +629,12 @@ export const passengerApi = {
     }
   },
 };
-export const agentApi = {};
+export const agentApi = {
+  getAllKYCdocuments: async (agent_id: string) => {
+    const response = await api.get(`/agent/${agent_id}/kyc-documents`);
+    return response.data;
+  },
+};
 export const operatorApi = {
   createBus: async (
     body: {
@@ -635,6 +732,12 @@ export const operatorApi = {
   getKYCdocuments: async (operator_id: string) => {
     const response = await api.get(`/operator/${operator_id}/kyc-documents`);
 
+    return response.data;
+  },
+  delteKYCdocument: async (operator_id: string, document_id: string) => {
+    const response = await api.delete(
+      `/operator/${operator_id}/kyc-documents/${document_id}`,
+    );
     return response.data;
   },
 };

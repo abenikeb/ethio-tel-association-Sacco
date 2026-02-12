@@ -124,11 +124,7 @@ export default function UserList() {
         return;
       }
 
-      const response = await superAdminApi.unAssignRole(
-        user.id,
-        user.roles[0].slug,
-      );
-      console.log(response);
+      await superAdminApi.unAssignRole(user.id, user.roles[0].slug);
 
       toast.success(`Role ${user.roles[0].name} unassigned successfully`);
       refetch();
@@ -138,6 +134,7 @@ export default function UserList() {
       } else {
         toast.error("Failed to unassign role");
       }
+      console.log(error);
     }
   }
 
@@ -232,7 +229,7 @@ export default function UserList() {
             >
               CSV
             </Button>
-            <Button variant="outline">PDF</Button>
+            {/* <Button variant="outline">PDF</Button> */}
             <Button variant="outline">Print</Button>
             <Button
               className="ml-3.5 "
@@ -312,6 +309,7 @@ export default function UserList() {
                                 setSelectUserAssign(u);
                                 setAssignRoleOpen(true);
                               }}
+                              disabled={u.roles.length > 0}
                             >
                               Assign Role
                             </DropdownMenuItem>
@@ -331,6 +329,7 @@ export default function UserList() {
                                 setSelectUserAssign(u);
                                 setUnassignRoleOpen(true);
                               }}
+                              disabled={u.roles.length === 0}
                             >
                               Unassign Role
                             </DropdownMenuItem>
@@ -448,13 +447,6 @@ export default function UserList() {
             </p>
 
             <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setUnassignRoleOpen(false)}
-              >
-                Cancel
-              </Button>
-
               <Button
                 variant="destructive"
                 onClick={() => {

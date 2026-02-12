@@ -1,17 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { operatorApi, sessionMgmt, superAdminApi } from "@/app/api/api";
+import { kycApi, operatorApi, sessionMgmt, superAdminApi } from "@/app/api/api";
 import {
   Agent,
   CreateTripPayload,
   Driver,
   KYCDocument,
+  KYCUpload,
   Operator,
   Session,
   User,
 } from "@/lib/model";
 import { totalmem } from "os";
 
-export const useUsers = (page?: number, per_page?: number) => {
+export const useUsers = (page?: number, per_page?: number, noCache = false) => {
   return useQuery({
     queryKey: ["users", page, per_page],
     queryFn: async () => {
@@ -23,7 +24,11 @@ export const useUsers = (page?: number, per_page?: number) => {
         return { items: res.items as User[], total: res.total, page: res.page };
       }
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: noCache ? 0 : 1000 * 60 * 5,
+    gcTime: noCache ? 0 : 1000 * 60 * 10,
+
+    refetchOnMount: noCache ? true : false,
+    refetchOnWindowFocus: noCache ? true : false,
   });
 };
 export const useOperator = (page: number, per_page: number) => {
@@ -154,5 +159,61 @@ export const useCreateDriver = () => {
         queryKey: ["drivers"],
       });
     },
+  });
+};
+export const OperatorUseUploadKyc = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<any, Error, KYCUpload & { operator_id: string }>({
+    mutationFn: async ({ operator_id, ...body }) => {
+      if (body.file === null) {
+        throw new Error("File is required for KYC upload.");
+      }
+      return kycApi.operatorUploadKyc(body, operator_id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["kyc-documents"],
+      });
+    },
+  });
+};
+export const AgentUseUploadKyc = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<any, Error, KYCUpload & { agent_id: string }>({
+    mutationFn: async ({ agent_id, ...body }) => {
+      if (body.file === null) {
+        throw new Error("File is required for KYC upload.");
+      }
+      return kycApi.agentUploadKyc(body, agent_id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["kyc-documents"],
+      });
+    },
+  });
+};
+export const useOperatorsKYCdocuments = () => {
+  return useQuery({
+    queryKey: ["admin-kyc-documents"],
+    queryFn: async () => {
+      const res = await superAdminApi.getAllOperatorKYCdocuments();
+      console.log("Fetched KYC documents for all operators:", res);
+      return res.items as KYCDocument[];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+};
+export const useAgentsKYCdocuments = () => {
+  return useQuery({
+    queryKey: ["admin-kyc-documents"],
+    queryFn: async () => {
+      const res = await superAdminApi.getAllAgentKYCdocuments();
+      console.log("Fetched KYC documents for all agents:", res);
+      return res.items as KYCDocument[];
+    },
+    staleTime: 1000 * 60 * 5,
   });
 };
