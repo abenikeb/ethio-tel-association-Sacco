@@ -23,7 +23,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -77,40 +76,14 @@ import { operatorApi } from "@/app/api/api";
 import { useAuth } from "@/lib/authContext";
 import { useOperatorBuses } from "@/components/Query";
 import { Bus, SeatTemplate } from "@/lib/model";
-import { pl } from "zod/v4/locales";
-import { set } from "zod";
-import SeatTemplateDialog from "@/components/SeatTemplateModal";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast, Toaster } from "sonner";
 import { isAxiosError } from "axios";
+import { useQueryClient } from "@tanstack/react-query";
+
+import AccountNotActiveBanner from "@/components/AccountBanner";
 
 type BusStatus = "active" | "inactive";
-
-// interface FleetBus {
-//   id: string;
-//   plate_number: string;
-//   side_no: string;
-//   status: BusStatus;
-//   capacity: number;
-
-//   seats: { row: number; col: number; available: boolean }[];
-// }
-
-// const initialBuses: FleetBus[] = [
-//   {
-//     id: "1",
-//     plate_number: "MH-12-AB-1234",
-//     side_no: "S-001",
-//     status: "Active",
-//     capacity: 45,
-//     // facilities: ["AC", "WiFi", "USB Charging"],
-//     seats: Array.from({ length: 45 }, (_, i) => ({
-//       row: Math.floor(i / 4) + 1,
-//       col: (i % 4) + 1,
-//       available: true,
-//     })),
-//   },
-// ];
 
 const scheduleOptions = [
   { id: "1", route: "Mumbai - Pune", time: "06:00 AM" },
@@ -118,17 +91,9 @@ const scheduleOptions = [
   { id: "3", route: "Mumbai - Goa", time: "10:00 AM" },
   { id: "4", route: "Pune - Bangalore", time: "07:00 PM" },
 ];
-interface createBusRequest extends Bus {
-  plate_no: string;
-  side_no: string;
-  capacity: number;
-  seat_template_id: string;
-  bus_status: "active" | "inactive";
-  // facilities: [] as string[],
-}
 
 export default function OperatorPage() {
-  const [buses, setBuses] = useState<Bus[]>([]);
+  // const [buses, setBuses] = useState<Bus[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -139,31 +104,27 @@ export default function OperatorPage() {
   const [isAssignTripOpen, setIsAssignTripOpen] = useState(false);
   const [busToAssign, setBusToAssign] = useState<string | null>(null);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [seatTemplates, setSeatTemplates] = useState<SeatTemplate[]>();
   const {
-    data: operatorBuses,
+    data: buses = [],
     isLoading,
     isError,
-  } = useOperatorBuses(user?.organization_id!);
+    error,
+  } = useOperatorBuses(user?.organization_id);
+
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     null,
   );
-  // Improved loading check that handles Auth delay AND State Sync delay
-  const isPageLoading =
-    isLoading ||
-    !user?.organization_id ||
-    (operatorBuses && operatorBuses.length > 0 && buses.length === 0);
 
   useEffect(() => {
-    if (!operatorBuses || !user?.organization_id) return;
-
-    setBuses(operatorBuses);
+    if (!user?.organization_id) return;
 
     operatorApi
       .getAllSeatTemplates(user.organization_id)
       .then(setSeatTemplates)
       .catch(console.error);
-  }, [operatorBuses, user?.organization_id]);
+  }, [user?.organization_id]);
 
   const [newBus, setNewBus] = useState({
     plate_no: "",
@@ -187,88 +148,154 @@ export default function OperatorPage() {
     setIsDetailsOpen(true);
   };
   const [selectedTemplate, setSelectedTemplate] = useState<SeatTemplate>();
+  const showAccountBanner =
+    isError &&
+    error &&
+    typeof error === "object" &&
+    "response" in error &&
+    (
+      error as {
+        response: {
+          status: number;
+        };
+      }
+    ).response?.status === 403;
+  const isPageLoading = isLoading && !showAccountBanner;
 
   const handleTemplateSelect = (template: SeatTemplate) => {
     console.log("Selected template:", template);
     setSelectedTemplate(template);
   };
 
-  const handleStatusChange = (busId: string, newStatus: BusStatus) => {
-    setBuses((prev) =>
-      prev.map((bus) =>
-        bus.id === busId ? { ...bus, status: newStatus } : bus,
-      ),
-    );
+  const handleStatusChange = async (bus: Bus, newStatus: BusStatus) => {
+    if (!user?.organization_id) return;
+
+    try {
+      await operatorApi.updateBusStatus(user.organization_id, bus, newStatus);
+
+      await queryClient.invalidateQueries({
+        queryKey: ["buses", user.organization_id],
+      });
+
+      toast.success("Status updated");
+    } catch {
+      toast.error("Failed to update status");
+    }
   };
 
   const handleDeleteBus = async () => {
-    if (busToDelete) {
-      setBuses((prev) => prev.filter((bus) => bus.id !== busToDelete));
-      await operatorApi.deleteBus(user?.organization_id || "", busToDelete);
+    if (!busToDelete || !user?.organization_id) return;
+
+    try {
+      await operatorApi.deleteBus(user.organization_id, busToDelete);
+
+      await queryClient.invalidateQueries({
+        queryKey: ["buses", user.organization_id],
+      });
+
+      toast.success("Bus deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete bus");
+    } finally {
       setBusToDelete(null);
       setIsDeleteDialogOpen(false);
     }
   };
 
+  // const handleAddBus = async () => {
+  //   const bus: createBusRequest = {
+  //     ...newBus,
+
+  //     bus_status: "active",
+  //     seat_template_id: selectedTemplateId ?? "",
+  //     created_at: new Date().toString(),
+  //     operator_id: user?.organization_id ?? "",
+  //     updated_at: new Date().toString(),
+  //     id: Date.now().toString(),
+  //     seat_template: selectedTemplate!,
+  //   };
+
+  //   setAddBusStep(1);
+  //   const dataT = {
+  //     plate_no: bus.plate_no,
+  //     side_no: bus.side_no,
+  //     capacity: bus.capacity,
+  //     seat_template_id: bus.seat_template_id,
+  //     bus_status: bus.bus_status,
+  //   };
+
+  //   try {
+  //     await operatorApi.createBus(dataT, user?.organization_id || "");
+
+  //     setIsAddBusOpen(false);
+  //     // if (selectedTemplateId) {
+  //     //   setNewBus((prev) => ({
+  //     //     ...prev,
+  //     //     seat_template_id: selectedTemplateId,
+  //     //   }));
+  //     //   setBuses((prev) => [...prev, bus]);
+  //     // }
+  //   } catch (error) {
+  //     if (isAxiosError(error)) {
+  //       toast.error(error.response?.data.error);
+  //     } else if (error instanceof Error) {
+  //       toast.error(error.message);
+  //     } else {
+  //       toast.error("An error occurred while trying to add the bus");
+  //     }
+  //   } finally {
+  //     setNewBus({
+  //       plate_no: "",
+  //       capacity: 0,
+  //       side_no: "",
+  //       seat_template_id: "",
+  //       bus_status: "active",
+  //     });
+  //   }
+  // };
   const handleAddBus = async () => {
-    const bus: createBusRequest = {
-      ...newBus,
+    if (!user?.organization_id) return;
 
-      bus_status: "active",
+    const data = {
+      plate_no: newBus.plate_no,
+      side_no: newBus.side_no,
+      capacity: newBus.capacity,
       seat_template_id: selectedTemplateId ?? "",
-      created_at: new Date().toString(),
-      operator_id: user?.organization_id ?? "",
-      updated_at: new Date().toString(),
-      id: Date.now().toString(),
-      seat_template: selectedTemplate!,
-    };
-
-    console.log(newBus, "new bus");
-
-    setAddBusStep(1);
-    const dataT = {
-      plate_no: bus.plate_no,
-      side_no: bus.side_no,
-      capacity: bus.capacity,
-      seat_template_id: bus.seat_template_id,
-      bus_status: bus.bus_status,
+      bus_status: "active",
     };
 
     try {
-      await operatorApi.createBus(dataT, user?.organization_id || "");
+      await operatorApi.createBus(data, user.organization_id);
 
+      await queryClient.invalidateQueries({
+        queryKey: ["buses", user.organization_id],
+      });
+
+      toast.success("Bus added successfully");
       setIsAddBusOpen(false);
-      if (selectedTemplateId) {
-        setNewBus((prev) => ({
-          ...prev,
-          seat_template_id: selectedTemplateId,
-        }));
-        setBuses((prev) => [...prev, bus]);
-      }
     } catch (error) {
       if (isAxiosError(error)) {
         toast.error(error.response?.data.error);
-      } else if (error instanceof Error) {
-        toast.error(error.message);
       } else {
-        toast.error("An error occurred while trying to add the bus");
+        toast.error("Failed to add bus");
       }
     } finally {
       setNewBus({
         plate_no: "",
-        capacity: 0,
         side_no: "",
+        capacity: 0,
         seat_template_id: "",
         bus_status: "active",
       });
+      setAddBusStep(1);
     }
   };
 
   const handleUpdateBus = (updatedBus: Bus) => {
-    setBuses((prev) =>
-      prev.map((bus) => (bus.id === updatedBus.id ? updatedBus : bus)),
-    );
-    setSelectedBus(updatedBus);
+    // setBuses((prev) =>
+    //   prev.map((bus) => (bus.id === updatedBus.id ? updatedBus : bus)),
+    // );
+    // setSelectedBus(updatedBus);
   };
 
   const getStatusColor = (status: BusStatus) => {
@@ -281,21 +308,32 @@ export default function OperatorPage() {
     }
   };
 
-  const activeCount = buses.filter((b) => b.bus_status === "active").length;
-  const maintenanceCount = buses.filter(
-    (b) => b.bus_status === "inactive",
+  const activeCount = buses.filter(
+    (b: Bus) => b.bus_status === "active",
   ).length;
-  const totalCapacity = buses.reduce((sum, b) => sum + b.capacity, 0);
+  const maintenanceCount = buses.filter(
+    (b: Bus) => b.bus_status === "inactive",
+  ).length;
+  const totalCapacity = buses.reduce(
+    (sum: number, b: Bus) => sum + b.capacity,
+    0,
+  );
 
   return (
     <div className="flex flex-col">
       <Toaster position="top-right" richColors />
-      {/* Header */}
+
       <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+        {showAccountBanner && <AccountNotActiveBanner />}
+
         <div className="flex h-16 items-center gap-4 px-6">
           <SidebarTrigger />
           <div className="flex flex-1 flex-row-reverse">
-            <Button onClick={() => setIsAddBusOpen(true)} className="gap-2">
+            <Button
+              onClick={() => setIsAddBusOpen(true)}
+              className="gap-2"
+              disabled={isLoading || isError}
+            >
               <Plus className="size-4" />
               Add New Bus
             </Button>
@@ -303,9 +341,7 @@ export default function OperatorPage() {
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="flex-1 space-y-6 p-6">
-        {/* Stats Cards */}
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -457,7 +493,7 @@ export default function OperatorPage() {
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStatusChange(bus.id, "active");
+                              handleStatusChange(bus, "active");
                             }}
                           >
                             Set Active
@@ -465,7 +501,7 @@ export default function OperatorPage() {
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStatusChange(bus.id, "inactive");
+                              handleStatusChange(bus, "inactive");
                             }}
                           >
                             Set Inactive
@@ -630,12 +666,12 @@ export default function OperatorPage() {
         <DialogContent className="sm:max-w-[500px] max-h-[92vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Add New Bus</DialogTitle>
-            <DialogDescription>
+            {/* <DialogDescription>
               Step {addBusStep} of 2:{" "}
               {addBusStep === 1
                 ? "Vehicle Specifications"
                 : "Seat Configuration"}
-            </DialogDescription>
+            </DialogDescription> */}
           </DialogHeader>
           {addBusStep === 1 ? (
             <div className="flex-1 space-y-4 py-4 overflow-y-auto">
@@ -663,7 +699,7 @@ export default function OperatorPage() {
                   className="font-mono"
                 />
               </div>
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label htmlFor="new-license">Capacity</Label>
                 <Input
                   id="capacity"
@@ -675,7 +711,7 @@ export default function OperatorPage() {
                   }
                   className="font-mono"
                 />
-              </div>
+              </div> */}
 
               {/* <div className="space-y-2">
                 <Label htmlFor="new-facilities">

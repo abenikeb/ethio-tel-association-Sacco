@@ -27,7 +27,7 @@ export default function Navbar(Props: NavbarProps) {
         <div className="flex items-center justify-between h-16">
           <div className="relative flex-shrink-0">
             <span className="text-2xl font-bold text-primary ml-0 mr-15">
-              DANU BOOKING
+              <Link href="/passenger">DANU BOOKING</Link>
             </span>
           </div>
 
@@ -61,9 +61,9 @@ export default function Navbar(Props: NavbarProps) {
               className="text-gray-700 hover:text-primary"
             >
               {isMenuOpen ? (
-                <X className="w-6 h-6" />
+                <X className="w-6 h-6 cursor-pointer" />
               ) : (
-                <Menu className="w-6 h-6" />
+                <Menu className="w-6 h-6 cursor-pointer" />
               )}
             </button>
           </div>
@@ -78,12 +78,12 @@ export default function Navbar(Props: NavbarProps) {
             >
               Home
             </Link>
-            <Link
+            {/* <Link
               href="/bookings"
               className="block text-center px-3 py-2 text-gray-700 hover:text-teal-600 font-medium transition-colors"
             >
               Bookings
-            </Link>
+            </Link> */}
             <Link
               href="/about-us"
               className="block text-center px-3 py-2 text-gray-700 hover:text-teal-600 font-medium transition-colors"
@@ -116,6 +116,7 @@ export default function Navbar(Props: NavbarProps) {
               <div className="px-3 mt-2 w-full py-2 flex justify-center gap-2">
                 <Button
                   variant="destructive"
+                  className="cursor-pointer"
                   onClick={async () => {
                     authAPI.logout();
                   }}

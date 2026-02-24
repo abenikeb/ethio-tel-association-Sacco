@@ -10,7 +10,6 @@ import { toast, Toaster } from "sonner";
 import axios, { isAxiosError } from "axios";
 
 import { useAuth } from "@/lib/authContext";
-import { decodeJWT, setAuthCookies } from "@/lib/auth";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -134,22 +133,34 @@ export default function LoginPage() {
               </div>
 
               {/* Sign In Button */}
+              {/* Sign In Button */}
               <button
                 type="submit"
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 rounded-lg transition-colors mt-6"
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 rounded-lg transition-colors"
               >
                 Sign In
               </button>
+
+              {/* Divider */}
+              <div className="flex items-center my-2">
+                <div className="grow border-t border-gray-200"></div>
+                <span className="px-3 text-sm text-gray-600">OR</span>
+                <div className="grow border-t border-gray-200"></div>
+              </div>
+
+              <Link
+                href="/guest"
+                className="block w-full text-center border border-gray-300 hover:border-teal-500 text-gray-700 font-medium py-3 rounded-lg transition-colors"
+              >
+                Continue as Guest
+              </Link>
             </form>
 
-            {/* Divider */}
-
-            {/* Sign Up Link */}
-            <p className="text-center mt-6 text-gray-600">
+            <p className="text-center  mt-6 text-gray-600">
               Don't have an account?{" "}
               <Link
                 href="/signup"
-                className="text-coral-600 hover:text-coral-700 font-semibold"
+                className="text-teal-600 hover:text-teal-700 font-semibold"
               >
                 Sign up
               </Link>

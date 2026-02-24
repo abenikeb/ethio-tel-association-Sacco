@@ -3,29 +3,26 @@
 import { useEffect, useState } from "react";
 import { MapPin, Calendar, ArrowRight, Star, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
 import { Toaster, toast } from "sonner";
 
-import { useAuth } from "@/lib/authContext";
-import {
-  PopularRoute,
-  PopularRoutesResponse,
-  SearchRouteResponse,
-} from "@/lib/model";
-import api, { passengerApi } from "@/app/api/api";
-import { handleSearch } from "@/lib/common_functions";
+import { PopularRoute } from "@/lib/model";
+import { passengerApi } from "@/app/api/api";
+
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
+import EtDatePicker from "@/components/eth-calendar/habesha-date-picker/src";
+
 export default function DanuBooking() {
   const router = useRouter();
   const today = new Date().toISOString().split("T")[0];
-
   const [suggestionsFrom, setSuggestionsFrom] = useState([]);
   const [suggestionsTo, setSuggestionsTo] = useState([]);
   const [showDropdownFrom, setShowDropdownFrom] = useState(false);
   const [showDropdownTo, setShowDropdownTo] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [popularRoutes, setPopularRoutes] = useState<PopularRoute[]>();
+  const [popularRoutes, setPopularRoutes] = useState<PopularRoute[]>([]);
+  const [date, setDate] = useState<Date | null>();
 
   const [form, setForm] = useState({
     route_from: "",
@@ -56,11 +53,11 @@ export default function DanuBooking() {
       route_from: route.route_from,
       route_to: route.route_to,
     });
-    // Scroll to booking form
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>
+    event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
     if (!form.departure_date || !form.route_from || !form.route_to) {
@@ -68,7 +65,7 @@ export default function DanuBooking() {
       return;
     }
     router.push(
-      `/passenger/bookings?from=${form.route_from}&to=${form.route_to}&date=${form.departure_date}`
+      `/passenger/bookings?from=${form.route_from}&to=${form.route_to}&date=${form.departure_date}`,
     );
   }
   const handleSelectFromCity = (city: string) => {
@@ -109,13 +106,28 @@ export default function DanuBooking() {
     }
   }
 
+  const handleSelect = (newSelected: Date | undefined) => {
+    // Update the selected dates
+    setDate(newSelected);
+  };
+
   return (
     <div className="w-full">
       <Toaster richColors position="top-right"></Toaster>
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-b from-teal-700 via-teal-600 to-teal-500 py-20 px-4 sm:py-32 text-center text-white">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 text-balance">
+
+      <section className="relative py-20 px-4 sm:py-32 text-center text-white overflow-hidden">
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src="/videos/bus.mp4" type="video/mp4" />
+        </video>
+
+        <div className="relative max-w-6xl mx-auto z-10">
+          <h1 className="text-2xl sm:text-5xl lg:text-6xl font-bold mb-4 text-balance">
             BOOK YOUR BUS TICKET
           </h1>
           <p className="text-lg sm:text-xl text-teal-50 mb-8">
@@ -124,7 +136,7 @@ export default function DanuBooking() {
 
           <form onSubmit={handleSubmit}>
             <Card className="p-6 bg-white rounded-lg shadow-xl hover:shadow-2xl max-w-xl lg:max-w-max mx-auto">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-2">
                     From
@@ -153,7 +165,7 @@ export default function DanuBooking() {
                             onClick={() => handleSelectFromCity(city)}
                             className="w-full text-left px-4 py-2.5 hover:bg-[#00a896] hover:text-white transition-colors flex items-center gap-2 border-b border-border last:border-b-0"
                           >
-                            <MapPin className="w-4 h-4 flex-shrink-0" />
+                            <MapPin className="w-4 h-4 shrink-0" />
                             <span className="text-sm font-medium">{city}</span>
                           </button>
                         ))}
@@ -198,20 +210,57 @@ export default function DanuBooking() {
 
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Depart
+                    Departure Date
                   </label>
-                  <input
+                  {/* <input
                     type="date"
                     value={form.departure_date}
+                    min={new Date().toISOString().split("T")[0]}
                     onChange={(e) =>
                       setForm({ ...form, departure_date: e.target.value })
                     }
                     className="w-full px-4 py-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-[#00a896]"
+                  /> */}
+                  <EtDatePicker
+                    minDate={new Date()}
+                    value={
+                      form.departure_date
+                        ? (() => {
+                            const [y, m, d] = form.departure_date
+                              .split("-")
+                              .map(Number);
+                            return new Date(y, m - 1, d); // LOCAL date
+                          })()
+                        : null
+                    }
+                    sx={{ color: "#00a896", width: "100%" }}
+                    onChange={(
+                      date: Date | [Date | null, Date | null] | null,
+                    ) => {
+                      let selectedDate: Date | null = null;
+                      if (Array.isArray(date)) {
+                        selectedDate = date[0] ?? null;
+                      } else {
+                        selectedDate = date ?? null;
+                      }
+                      setForm({
+                        ...form,
+                        departure_date: selectedDate
+                          ? selectedDate.toISOString().split("T")[0]
+                          : "",
+                      });
+                    }}
+                    className="w-full px-4 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-[#00a896]"
                   />
                 </div>
 
                 <div className="flex items-end">
-                  <Button className="w-full bg-[#00a896] hover:bg-[#028f7f] text-white py-6 text-lg font-semibold">
+                  <Button
+                    disabled={
+                      !form.route_from || !form.route_to || !form.departure_date
+                    }
+                    className="w-full bg-[#00a896] hover:bg-[#028f7f] text-white py-6 text-lg font-semibold"
+                  >
                     Find Tickets
                   </Button>
                 </div>
@@ -222,14 +271,7 @@ export default function DanuBooking() {
       </section>
       <section className="py-16 px-4 bg-background">
         <div className="container mx-auto max-w-6xl">
-          <div className="flex items-center justify-center gap-3 mb-10">
-            <TrendingUp className="w-8 h-8 text-[#00a896]" />
-            <h3 className="text-3xl font-bold text-foreground">
-              Popular Routes
-            </h3>
-          </div>
-
-          {loading ? (
+          {loading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
                 <Card key={i} className="p-6 animate-pulse">
@@ -238,45 +280,59 @@ export default function DanuBooking() {
                 </Card>
               ))}
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {popularRoutes?.map((route, index) => (
-                <Card
-                  key={index}
-                  className="p-6 hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-[#00a896] group"
-                  onClick={() => handleRouteSelect(route)}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <MapPin className="w-4 h-4 text-[#00a896]" />
-                        <span className="font-semibold text-lg text-foreground">
-                          {route.route_from}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 ml-6">
-                        <span className="text-muted-foreground">→</span>
-                        <span className="font-semibold text-lg text-foreground">
-                          {route.route_to}
-                        </span>
+          )}
+          <div className="flex items-center justify-center gap-3 mb-5">
+            <TrendingUp className="w-8 h-8 text-[#00a896]" />
+            <h3 className="text-3xl font-bold text-foreground">
+              Popular Routes
+            </h3>
+          </div>
+
+          {/* Has data */}
+          {!loading && popularRoutes?.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {popularRoutes?.map((route, index) => (
+                  <Card
+                    key={index}
+                    className="p-6 hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-[#00a896] group"
+                    onClick={() => handleRouteSelect(route)}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <MapPin className="w-4 h-4 text-[#00a896]" />
+                          <span className="font-semibold text-lg text-foreground">
+                            {route.route_from}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 ml-6">
+                          <span className="text-muted-foreground">→</span>
+                          <span className="font-semibold text-lg text-foreground">
+                            {route.route_to}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-4 border-t border-border">
-                    <span className="text-sm text-muted-foreground">
-                      {route.trip_count.toLocaleString()} trips
-                    </span>
-                    <span className="text-sm font-medium text-[#00a896] opacity-0 group-hover:opacity-100 transition-opacity">
-                      Select →
-                    </span>
-                  </div>
-                </Card>
-              ))}
-            </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t border-border">
+                      <span className="text-sm text-muted-foreground">
+                        {route.trip_count.toLocaleString()} trips
+                      </span>
+                      <span className="text-sm font-medium text-[#00a896] opacity-0 group-hover:opacity-100 transition-opacity">
+                        Select →
+                      </span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </>
           )}
 
+          {/* Empty */}
           {!loading && popularRoutes?.length === 0 && (
-            <div className="text-center py-12">
+            <div className="text-center">
               <p className="text-muted-foreground text-lg">
                 No popular routes available at the moment.
               </p>

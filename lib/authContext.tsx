@@ -5,16 +5,18 @@ import {
   useState,
   ReactNode,
   useEffect,
+  useMemo,
 } from "react";
-import { decodeJWT, getAccessToken, setAuthCookies } from "./auth";
-import { useRouter } from "next/navigation";
-import { LoginResponse, User } from "./model";
+import { setAuthCookies } from "./auth";
+
+import { LoginResponse, UseAuthUser, User } from "./model";
 import { authAPI } from "@/app/api/api";
 import { usePathname } from "next/navigation";
+import { decodeJWT } from "./jwt";
 
 interface AuthContextType {
-  user: User | null;
-  setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  user: UseAuthUser | null;
+  setUser: React.Dispatch<React.SetStateAction<UseAuthUser | null>>;
   login: (
     identifier: string,
     password: string,
@@ -32,14 +34,14 @@ export const AuthProvider = ({
   blackListRoles: string[];
 }) => {
   const path = usePathname();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UseAuthUser | null>(null);
 
   useEffect(() => {
     if (!(path == "/login")) {
       const fetchCurrUser = async () => {
-        const response = (await authAPI.whoAmI()) as User;
+        const response = (await authAPI.whoAmI()) as UseAuthUser;
         const hasBlacklistedRole = response.roles.some((role) =>
-          blackListRoles.includes(role.slug),
+          blackListRoles.includes(role),
         );
 
         if (hasBlacklistedRole) {
@@ -51,7 +53,7 @@ export const AuthProvider = ({
       };
       fetchCurrUser();
     }
-  }, []);
+  }, [path, blackListRoles]);
 
   const login = async (
     identifier: string,
@@ -67,8 +69,6 @@ export const AuthProvider = ({
       if (response) {
         await setAuthCookies(response);
         const decoded = await decodeJWT(response.access_token);
-        // toast.success("You have successfully Logged In");
-        // console.log(decoded);
 
         if (decoded.roles.includes("passenger")) {
           // route.replace("/passenger");
@@ -78,7 +78,7 @@ export const AuthProvider = ({
           window.location.replace("/superadmin");
         } else if (decoded.roles.includes("agent_admin")) {
           // route.replace("/agent");
-          window.location.replace("/agent");
+          window.location.replace("/agent/ticket-booking");
         } else if (decoded.roles.includes("operator_admin")) {
           // route.replace("/operator");
           window.location.replace("/operator");
@@ -96,11 +96,10 @@ export const AuthProvider = ({
     }
   };
 
-  return (
-    <AuthContext.Provider value={{ user, setUser, login }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  // ✅ FIXED: Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({ user, setUser, login }), [user]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

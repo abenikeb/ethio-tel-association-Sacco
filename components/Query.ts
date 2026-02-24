@@ -1,16 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { kycApi, operatorApi, sessionMgmt, superAdminApi } from "@/app/api/api";
+import {
+  kycApi,
+  operatorApi,
+  passengerApi,
+  sessionMgmt,
+  superAdminApi,
+} from "@/app/api/api";
 import {
   Agent,
   CreateTripPayload,
   Driver,
+  History,
   KYCDocument,
   KYCUpload,
   Operator,
+  OperatorAgent,
   Session,
   User,
 } from "@/lib/model";
-import { totalmem } from "os";
 
 export const useUsers = (page?: number, per_page?: number, noCache = false) => {
   return useQuery({
@@ -29,6 +36,19 @@ export const useUsers = (page?: number, per_page?: number, noCache = false) => {
 
     refetchOnMount: noCache ? true : false,
     refetchOnWindowFocus: noCache ? true : false,
+  });
+};
+export const usePassengerHistory = (page: number, per_page: number) => {
+  return useQuery({
+    queryKey: ["history", per_page, page],
+    queryFn: async () => {
+      const res = await passengerApi.getBookingHistory(page, per_page);
+      return {
+        items: res.items as History[],
+        total: res.total,
+        page: res.page,
+      };
+    },
   });
 };
 export const useOperator = (page: number, per_page: number) => {
@@ -54,6 +74,7 @@ export const useTrips = (operator_id: string) => {
       return res.items;
     },
     staleTime: 1000 * 60 * 5,
+    retry: false,
     enabled: !!operator_id,
   });
 };
@@ -75,12 +96,15 @@ export const useOperatorBuses = (operator_id?: string) => {
     queryKey: ["buses", operator_id],
     queryFn: async () => {
       if (!operator_id) return [];
+
       const res = await operatorApi.getAllBuses(operator_id);
 
       return res.items;
     },
     staleTime: 1000 * 60 * 5,
     enabled: !!operator_id,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 };
 export const useSession = () => {
@@ -176,6 +200,59 @@ export const OperatorUseUploadKyc = () => {
         queryKey: ["kyc-documents"],
       });
     },
+  });
+};
+
+export const useCreateOperatorAgent = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    any,
+    Error,
+    {
+      operator_id: string;
+      body: {
+        first_name: string;
+        last_name: string;
+        email: string;
+        phone: string;
+        password: string;
+        is_active: boolean;
+      };
+    }
+  >({
+    mutationFn: async ({ operator_id, body }) => {
+      return operatorApi.createOperatorAgent(operator_id, body);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["operator_agent"],
+      });
+    },
+  });
+};
+
+export const useOperatorAgent = (
+  operator_id: string,
+  page: number,
+  per_page: number,
+) => {
+  return useQuery({
+    queryKey: ["operator_agent", operator_id, page, per_page],
+    queryFn: async () => {
+      if (!operator_id) return { items: [], total: 0, page: 1 };
+      const res = await operatorApi.getOperatorAgent(
+        page,
+        per_page,
+        operator_id,
+      );
+      return {
+        items: res.items as OperatorAgent[],
+        total: res.total,
+        page: res.page,
+      };
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: !!operator_id,
   });
 };
 export const AgentUseUploadKyc = () => {

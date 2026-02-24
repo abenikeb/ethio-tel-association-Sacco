@@ -5,6 +5,21 @@ export interface AddOperatorForm {
   contact_email: string;
   extra_metadata: Record<string, string>;
 }
+
+export interface History {
+  booking_id: string;
+  booking_ref: string;
+  booked_at: string;
+  booking_status: string;
+  trip_id: string;
+  route_from: string;
+  route_to: string;
+  departure_at: string;
+  operator_id: string;
+  operator_name: string;
+  total_amount: 0;
+  passenger_count: 0;
+}
 export interface Session {
   id: string;
   created_at?: string;
@@ -79,6 +94,23 @@ export type CreateTripPayload = {
   price: number;
 };
 
+export interface OperatorAgent {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  is_active: boolean;
+  created_at: string;
+  roles: {
+    additionalProp1: {};
+  };
+  organization_id: string;
+  verification: {
+    additionalProp1: {};
+  };
+}
+
 export interface User {
   sub: string;
   roles: Role[];
@@ -103,6 +135,28 @@ export interface User {
 }
 export interface SeatExtraMetadata {
   type: "window" | "asile"; // or string if other types are possible
+}
+export interface UseAuthUser {
+  sub: string;
+  roles: string[];
+  portal: string;
+  first_name: string;
+  last_name: string;
+  id: string;
+  phone?: string;
+  organization_id?: string;
+  phone_verified: boolean;
+  email: string;
+  email_verified: boolean;
+  is_disabled: boolean;
+  is_active: boolean;
+  display_name: string;
+  dob: string;
+  gender: string;
+  avatar_file_id: string;
+  bio: string;
+  address: Address;
+  last_login_at?: string;
 }
 
 export interface Seat {
@@ -151,6 +205,7 @@ export interface Route {
   driver: Driver;
   departure_at: string;
   price: number;
+  available_seats: number;
   created_at: string;
   updated_at: string;
 }
@@ -161,6 +216,7 @@ export interface TripData {
   driver: Driver;
   route_from: string;
   route_to: string;
+  available_seats: number;
   departure_at: string;
   price: number;
   created_at: string;
@@ -185,6 +241,7 @@ export type Passenger = {
 
 export interface Trip {
   trip_id: string;
+  available_seats: number;
   operator: {
     operator_id: string;
     operator_name: string;
@@ -199,6 +256,7 @@ export type Item = Trip | Route;
 export interface SearchRouteResponse {
   route_from: string;
   route_to: string;
+  available_seats: number;
   // items: Item[
   //   {
   //     route_id: string;
