@@ -11,6 +11,7 @@ import {
   DollarSign,
   ChartBar,
   TrendingUp,
+  TicketCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -35,18 +36,14 @@ const menuItems = [
   },
   {
     title: "Refund List",
-    url: "/agent/Refund-List",
+    url: "/agent/refund-list",
     icon: DollarSign,
   },
+
   {
     title: "Report",
     url: "/agent/report",
     icon: TrendingUp,
-  },
-  {
-    title: "KYC Documents",
-    url: "/operator/kyc",
-    icon: ScanFace,
   },
 ];
 

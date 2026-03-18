@@ -161,6 +161,9 @@ export default function OperatorPage() {
       }
     ).response?.status === 403;
   const isPageLoading = isLoading && !showAccountBanner;
+  const isAuthReady = !!user?.organization_id;
+  const isDataLoading = isAuthReady && isLoading;
+  const isEmpty = isAuthReady && !isLoading && filteredBuses.length === 0;
 
   const handleTemplateSelect = (template: SeatTemplate) => {
     console.log("Selected template:", template);
@@ -202,65 +205,19 @@ export default function OperatorPage() {
     }
   };
 
-  // const handleAddBus = async () => {
-  //   const bus: createBusRequest = {
-  //     ...newBus,
-
-  //     bus_status: "active",
-  //     seat_template_id: selectedTemplateId ?? "",
-  //     created_at: new Date().toString(),
-  //     operator_id: user?.organization_id ?? "",
-  //     updated_at: new Date().toString(),
-  //     id: Date.now().toString(),
-  //     seat_template: selectedTemplate!,
-  //   };
-
-  //   setAddBusStep(1);
-  //   const dataT = {
-  //     plate_no: bus.plate_no,
-  //     side_no: bus.side_no,
-  //     capacity: bus.capacity,
-  //     seat_template_id: bus.seat_template_id,
-  //     bus_status: bus.bus_status,
-  //   };
-
-  //   try {
-  //     await operatorApi.createBus(dataT, user?.organization_id || "");
-
-  //     setIsAddBusOpen(false);
-  //     // if (selectedTemplateId) {
-  //     //   setNewBus((prev) => ({
-  //     //     ...prev,
-  //     //     seat_template_id: selectedTemplateId,
-  //     //   }));
-  //     //   setBuses((prev) => [...prev, bus]);
-  //     // }
-  //   } catch (error) {
-  //     if (isAxiosError(error)) {
-  //       toast.error(error.response?.data.error);
-  //     } else if (error instanceof Error) {
-  //       toast.error(error.message);
-  //     } else {
-  //       toast.error("An error occurred while trying to add the bus");
-  //     }
-  //   } finally {
-  //     setNewBus({
-  //       plate_no: "",
-  //       capacity: 0,
-  //       side_no: "",
-  //       seat_template_id: "",
-  //       bus_status: "active",
-  //     });
-  //   }
-  // };
   const handleAddBus = async () => {
     if (!user?.organization_id) return;
+    const seat51template = seatTemplates?.find(
+      (s) => s.name == "Standard 51 Seat Layout",
+    );
+    //FIXED
+    const seat_numbers = 51;
 
     const data = {
       plate_no: newBus.plate_no,
       side_no: newBus.side_no,
-      capacity: newBus.capacity,
-      seat_template_id: selectedTemplateId ?? "",
+      capacity: seat_numbers,
+      seat_template_id: seat51template?.id ?? "",
       bus_status: "active",
     };
 
@@ -342,7 +299,7 @@ export default function OperatorPage() {
       </header>
 
       <div className="flex-1 space-y-6 p-6">
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Buses</CardTitle>
@@ -421,7 +378,7 @@ export default function OperatorPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isPageLoading && (
+                {/* {( user?.organization_id || "").length == 0 && (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-6">
                       Loading buses...
@@ -429,108 +386,134 @@ export default function OperatorPage() {
                   </TableRow>
                 )}
 
-                {!isPageLoading && filteredBuses.length === 0 && (
+                {isPageLoading &&( user?.organization_id || "").length == 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-6">
+                      Loading buses...
+                    </TableCell>
+                  </TableRow>
+                )} */}
+
+                {/* {!isPageLoading &&
+                  filteredBuses.length === 0 &&
+                  (user?.organization_id || "").length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6">
+                        No buses found
+                      </TableCell>
+                    </TableRow>
+                  )} */}
+                {!isAuthReady || isDataLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-6">
+                      Loading buses...
+                    </TableCell>
+                  </TableRow>
+                ) : isEmpty ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-6">
                       No buses found
                     </TableCell>
                   </TableRow>
-                )}
-                {filteredBuses?.map((bus: Bus) => (
-                  <TableRow
-                    key={bus.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleViewDetails(bus)}
-                  >
-                    <TableCell className="font-mono font-medium">
-                      {bus.plate_no}
-                    </TableCell>
-                    <TableCell className="font-mono font-medium">
-                      {bus.side_no}
-                    </TableCell>
-                    {/* <TableCell>{bus.model}</TableCell> */}
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={getStatusColor(bus.bus_status as BusStatus)}
-                      >
-                        {bus.bus_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{bus.capacity} seats</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          asChild
-                          onClick={(e) => e.stopPropagation()}
+                ) : (
+                  filteredBuses?.map((bus: Bus) => (
+                    <TableRow
+                      key={bus.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleViewDetails(bus)}
+                    >
+                      <TableCell className="font-mono font-medium">
+                        {bus.plate_no}
+                      </TableCell>
+                      <TableCell className="font-mono font-medium">
+                        {bus.side_no}
+                      </TableCell>
+                      {/* <TableCell>{bus.model}</TableCell> */}
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={getStatusColor(
+                            bus.bus_status as BusStatus,
+                          )}
                         >
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewDetails(bus);
-                            }}
+                          {bus.bus_status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{bus.capacity} seats</TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            asChild
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Edit className="mr-2 size-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setBusToAssign(bus.id);
-                              setIsAssignTripOpen(true);
-                            }}
-                          >
-                            <Calendar className="mr-2 size-4" />
-                            Assign Trip
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {/* <DropdownMenuLabel>Change Status</DropdownMenuLabel> */}
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStatusChange(bus, "active");
-                            }}
-                          >
-                            Set Active
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStatusChange(bus, "inactive");
-                            }}
-                          >
-                            Set Inactive
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                          >
-                            Add Seatmap
-                          </DropdownMenuItem>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewDetails(bus);
+                              }}
+                            >
+                              <Edit className="mr-2 size-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setBusToAssign(bus.id);
+                                setIsAssignTripOpen(true);
+                              }}
+                            >
+                              <Calendar className="mr-2 size-4" />
+                              Assign Trip
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {/* <DropdownMenuLabel>Change Status</DropdownMenuLabel> */}
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(bus, "active");
+                              }}
+                            >
+                              Set Active
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(bus, "inactive");
+                              }}
+                            >
+                              Set Inactive
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              Add Seatmap
+                            </DropdownMenuItem>
 
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setBusToDelete(bus.id);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="mr-2 size-4" />
-                            Delete Bus
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setBusToDelete(bus.id);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="mr-2 size-4" />
+                              Delete Bus
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -666,40 +649,34 @@ export default function OperatorPage() {
         <DialogContent className="sm:max-w-[500px] max-h-[92vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Add New Bus</DialogTitle>
-            {/* <DialogDescription>
-              Step {addBusStep} of 2:{" "}
-              {addBusStep === 1
-                ? "Vehicle Specifications"
-                : "Seat Configuration"}
-            </DialogDescription> */}
           </DialogHeader>
-          {addBusStep === 1 ? (
-            <div className="flex-1 space-y-4 py-4 overflow-y-auto">
-              <div className="space-y-2">
-                <Label htmlFor="new-license">License Plate</Label>
-                <Input
-                  id="new-license"
-                  placeholder="MH-12-XX-0000"
-                  value={newBus.plate_no}
-                  onChange={(e) =>
-                    setNewBus({ ...newBus, plate_no: e.target.value })
-                  }
-                  className="font-mono"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="side-number">Side Number</Label>
-                <Input
-                  id="side-number"
-                  placeholder="MH-12-XX-0000"
-                  value={newBus.side_no}
-                  onChange={(e) =>
-                    setNewBus({ ...newBus, side_no: e.target.value })
-                  }
-                  className="font-mono"
-                />
-              </div>
-              {/* <div className="space-y-2">
+
+          <div className="flex-1 space-y-4 py-4 overflow-y-auto">
+            <div className="space-y-2">
+              <Label htmlFor="new-license">License Plate</Label>
+              <Input
+                id="new-license"
+                placeholder="MH-12-XX-0000"
+                value={newBus.plate_no}
+                onChange={(e) =>
+                  setNewBus({ ...newBus, plate_no: e.target.value })
+                }
+                className="font-mono"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="side-number">Side Number</Label>
+              <Input
+                id="side-number"
+                placeholder="MH-12-XX-0000"
+                value={newBus.side_no}
+                onChange={(e) =>
+                  setNewBus({ ...newBus, side_no: e.target.value })
+                }
+                className="font-mono"
+              />
+            </div>
+            {/* <div className="space-y-2">
                 <Label htmlFor="new-license">Capacity</Label>
                 <Input
                   id="capacity"
@@ -713,7 +690,7 @@ export default function OperatorPage() {
                 />
               </div> */}
 
-              {/* <div className="space-y-2">
+            {/* <div className="space-y-2">
                 <Label htmlFor="new-facilities">
                   Facilities (comma-separated)
                 </Label>
@@ -730,94 +707,10 @@ export default function OperatorPage() {
                   }
                 />
               </div> */}
-            </div>
-          ) : (
-            <div className="space-y-4 py-4 overflow-auto">
-              {seatTemplates ? (
-                <RadioGroup
-                  value={selectedTemplateId || undefined}
-                  onValueChange={(value) => setSelectedTemplateId(value)}
-                  className="flex flex-col space-y-2 mt-4"
-                >
-                  {seatTemplates.map((template) => (
-                    <div
-                      key={template.id}
-                      className="flex items-center space-x-2"
-                    >
-                      <RadioGroupItem value={template.id} id={template.id} />
-                      <Label htmlFor={template.id}>{template.name}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              ) : (
-                <div className="rounded-lg border border-border bg-muted/30 p-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-capacity">Seating Capacity</Label>
-                    <Input
-                      id="new-capacity"
-                      type="number"
-                      min="20"
-                      max="60"
-                      value={newBus.capacity}
-                      onChange={(e) =>
-                        setNewBus({
-                          ...newBus,
-                          capacity: Number.parseInt(e.target.value),
-                        })
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Layout will be generated as{" "}
-                      {Math.ceil(newBus.capacity / 4)} rows × 4 columns
-                    </p>
-                  </div>
-                  <div className="mb-3 flex items-center justify-center">
-                    <div className="rounded-md bg-secondary px-3 py-1.5 text-xs font-medium">
-                      Driver
-                    </div>
-                  </div>
-                  <div
-                    className="grid gap-2"
-                    style={{ gridTemplateColumns: "repeat(4, 1fr)" }}
-                  >
-                    {Array.from(
-                      { length: Math.min(newBus.capacity, 16) },
-                      (_, i) => (
-                        <div
-                          key={i}
-                          className="flex aspect-square items-center justify-center rounded-md border border-border bg-card text-xs font-medium"
-                        >
-                          {i + 1}
-                        </div>
-                      ),
-                    )}
-                  </div>
-                  {newBus.capacity > 16 && (
-                    <p className="mt-2 text-center text-xs text-muted-foreground">
-                      + {newBus.capacity - 16} more seats
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          </div>
 
           <DialogFooter>
-            {addBusStep === 2 && (
-              <Button variant="outline" onClick={() => setAddBusStep(1)}>
-                Back
-              </Button>
-            )}
-            {addBusStep === 1 ? (
-              <Button
-                onClick={() => setAddBusStep(2)}
-                disabled={!newBus.plate_no}
-              >
-                Next
-              </Button>
-            ) : (
-              <Button onClick={handleAddBus}>Add Bus</Button>
-            )}
+            <Button onClick={handleAddBus}>Add Bus</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

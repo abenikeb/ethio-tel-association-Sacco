@@ -1,6 +1,14 @@
 "use client";
 
-import { Bus, Calendar, Home, Users, Settings, ScanFace } from "lucide-react";
+import {
+  Bus,
+  Calendar,
+  Home,
+  Users,
+  Settings,
+  ScanFace,
+  DollarSign,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +23,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { TrendingUp } from "@mui/icons-material";
 
 const menuItems = [
   {
@@ -28,14 +37,20 @@ const menuItems = [
     icon: Bus,
   },
   {
+    title: "Refund Management",
+    url: "/operator/refunds",
+    icon: DollarSign,
+  },
+  {
     title: "Agents",
     url: "/operator/agents",
     icon: Users,
   },
+
   {
-    title: "Schedules",
-    url: "/schedules",
-    icon: Calendar,
+    title: "Report",
+    url: "/operator/report",
+    icon: TrendingUp,
   },
   {
     title: "Drivers",

@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { SetStateAction, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,160 +12,217 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
-import type { Bus, Seat } from "@/lib/model";
+import type { Bus, Passenger, Seat } from "@/lib/model";
+import GuestSeatBookingDialog from "./GuestSeatBookingDialog";
+import Image from "next/image";
+import { operatorApi, passengerApi } from "@/app/api/api";
+import { Spinner } from "./ui/spinner";
+import SeatBookingDialog from "./SeatBookingDialog";
 
 type SeatLayoutProps = {
   toggle: boolean;
-  bus: Bus;
-  idx: number;
+  trip_id: string;
   seats: Seat[];
-  selectedSeats: Record<number, string>;
-  setSelectedSeats: React.Dispatch<
-    React.SetStateAction<Record<number, string>>
-  >;
-  editingPassenger: Record<number, number>;
-
+  selectedSeats: string[];
+  setSelectedSeats: React.Dispatch<React.SetStateAction<string[]>>;
+  onSuccess?: () => void;
   setSeats: React.Dispatch<React.SetStateAction<Seat[]>>;
+  operator_id: string;
   setToggle: (val: boolean) => void;
-  onSelect: (seatId: string) => void;
 };
 
 export default function SeatLayoutDialog({
   toggle,
-  bus,
-  idx,
+  trip_id,
+  operator_id,
+  onSuccess,
   seats,
-  editingPassenger,
-  setSelectedSeats,
-  selectedSeats,
   setSeats,
+  selectedSeats,
+  setSelectedSeats,
   setToggle,
-  onSelect,
 }: SeatLayoutProps) {
-  // const [selectedSeats, setSelectedSeats] = useState<Record<number, string>>(
-  //   {}
-  // );
+  const [multiSelectSeats, setMultiSelectSeats] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
   useEffect(() => {
-    const editCount = editingPassenger[idx];
-    if (!editCount) return;
-
-    const prevSeat = Object.entries(selectedSeats).find(
-      ([key]) => Number(key) === idx,
-    )?.[1];
-
-    if (!prevSeat) return;
-
-    setSeats((prev) =>
-      prev.map((seat) =>
-        seat.id === prevSeat ? { ...seat, status: "available" } : seat,
-      ),
-    );
-  }, [editingPassenger[idx]]);
+    if (!trip_id) return;
+    const fetch = async () => {
+      const data = await passengerApi.getSeatLayout(trip_id);
+      if (data) {
+        setSeats(data?.seats);
+      }
+    };
+    fetch();
+  }, [trip_id]);
 
   useEffect(() => {
-    if (bus) {
-      setSeats(bus.seat_template.seats);
+    // Reset multi-select when dialog closes
+    if (!toggle) {
+      setMultiSelectSeats([]);
     }
-  }, [bus]);
+  }, [toggle]);
 
   const toggleSeat = (seat: Seat) => {
-    if (seat.status === "booked" || seat.status == "held") return;
+    if (seat.status === "booked" || seat.status === "held") return;
 
-    setSelectedSeats((prev) => {
-      // If this passenger already has this seat, unselect it
-      if (prev[idx] === seat.seat_code) {
-        const copy = { ...prev };
-        delete copy[idx];
-        return copy;
+    setMultiSelectSeats((prev) => {
+      const isSelected = prev.includes(seat.seat_code);
+      if (isSelected) {
+        return prev.filter((s) => s !== seat.seat_code);
+      } else {
+        return [...prev, seat.seat_code];
       }
-
-      // Otherwise, select the new seat for this passenger
-      return { ...prev, [idx]: seat.seat_code };
     });
   };
 
   const handleConfirm = () => {
-    // Check if seat is selected using passenger index
-
+    // if (multiSelectSeats.length === 0) return;
+    setSelectedSeats(multiSelectSeats);
+    // Mark selected seats as booked
     setSeats((prev) =>
       prev?.map((s) =>
-        s.seat_code === selectedSeats[idx] ? { ...s, status: "booked" } : s,
+        multiSelectSeats.includes(s.seat_code) ? { ...s, status: "booked" } : s,
       ),
     );
-    onSelect(selectedSeats[idx]);
+
+    // Assign seats to passengers in order - first selected seat to first passenger, etc.
+    setOpen(true);
     setToggle(false);
 
-    setSelectedSeats({}); // reset selection after confirm
+    setMultiSelectSeats([]);
   };
-  if (!bus) {
-    return <div>Loading...</div>;
-  }
+
+  const grouped = seats.reduce<Record<number, Seat[]>>((acc, seat) => {
+    if (!acc[seat.row]) acc[seat.row] = [];
+    acc[seat.row].push(seat);
+    return acc;
+  }, {});
+
+  Object.values(grouped).forEach((row) => row.sort((a, b) => a.col - b.col));
 
   return (
-    <Dialog open={toggle} onOpenChange={setToggle}>
-      <DialogTrigger asChild>
-        <Button>Choose Seats</Button>
-      </DialogTrigger>
+    <div>
+      <Dialog open={toggle} onOpenChange={setToggle}>
+        <DialogTrigger asChild>
+          <Button>Choose Seats</Button>
+        </DialogTrigger>
 
-      <DialogContent className="max-w-md h-[80%] overflow-y-scroll">
-        <DialogHeader>
-          <DialogTitle>Select Your Seats</DialogTitle>
-        </DialogHeader>
+        <DialogContent className="max-w-md h-[80%] overflow-y-scroll">
+          <DialogTitle>Choose your seats</DialogTitle>
+          <div className="flex flex-col items-center gap-4 mt-4">
+            {/* {multiSelectSeats.length > 0 && (
+            <div className="w-full bg-blue-50 p-3 rounded border border-blue-200">
+              <p className="text-sm font-medium">
+                Selected: {multiSelectSeats.join(", ")}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                {multiSelectSeats.length} of {passengers.length} seat
+                {passengers.length !== 1 ? "s" : ""} selected
+              </p>
+            </div>
+          )} */}
 
-        <div className="grid grid-cols-5  gap-3 justify-items-center mt-4">
-          {seats?.map((seat, index) => {
-            const isAisle = index % 4 === 2;
-
-            return (
-              <div key={seat.id} className="contents">
-                {/* Insert aisle gap */}
-                {isAisle && <div className="col-span-1"></div>}
-
-                <button
-                  onClick={() => toggleSeat(seat)}
-                  disabled={seat.status == "booked" || seat.status == "held"}
-                  className={clsx(
-                    "w-12 h-12 rounded-lg border text-sm font-semibold",
-                    "transition-colors",
-                    (seat.status == "booked" || seat.status == "held") &&
-                      "bg-gray-300 cursor-not-allowed",
-                    // Now correctly checks if this seat is selected for THIS passenger
-                    selectedSeats[idx] === seat.seat_code &&
-                      "bg-teal-600 text-white",
-                    seat.status == "available" &&
-                      selectedSeats[idx] !== seat.seat_code &&
-                      "bg-white hover:bg-teal-100",
-                  )}
-                >
-                  {seat.seat_code}
-                </button>
+            {seats.length == 0 ? (
+              <div className="w-full h-full flex items-center justify-center">
+                <Spinner />
               </div>
-            );
-          })}
-        </div>
+            ) : (
+              <div className="grid gap-2">
+                <div className="w-18 h-18 mb-1 flex items-center justify-center text-xs font-bold">
+                  <img src="/steering-wheel.png" alt={"steering wheel"} />
+                </div>
 
-        {/* Legend */}
-        <div className="flex justify-between text-sm mt-4">
-          <span className="flex items-center gap-1">
-            <span className="w-4 h-4 bg-white border rounded" /> Available
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-4 h-4 bg-teal-600 border rounded" /> Selected
-          </span>
+                <div className="flex flex-col gap-2">
+                  {Object.entries(grouped).map(([rowNumber, rowSeats]) => (
+                    <div
+                      key={rowNumber}
+                      className="flex gap-2 justify-start items-center"
+                    >
+                      {rowSeats.map((seat, index) => (
+                        <>
+                          {rowSeats.length === 4 && index === 2 && (
+                            <div className="w-9" />
+                          )}
 
-          <span className="flex items-center gap-1">
-            <span className="w-4 h-4 bg-gray-300 rounded" /> Held
-          </span>
-        </div>
+                          <button
+                            key={seat.id}
+                            onClick={() => {
+                              setMultiSelectSeats((prev) => {
+                                const isSelected = prev.includes(
+                                  seat.seat_code,
+                                );
 
-        <Button
-          className="w-full mt-4"
-          disabled={!selectedSeats[idx]} // Check if seat is selected using passenger index
-          onClick={handleConfirm}
-        >
-          Confirm Seats
-        </Button>
-      </DialogContent>
-    </Dialog>
+                                if (isSelected) {
+                                  return prev.filter(
+                                    (s) => s !== seat.seat_code,
+                                  );
+                                }
+
+                                return [...prev, seat.seat_code];
+                              });
+                            }}
+                            disabled={
+                              seat.status === "booked" || seat.status === "held"
+                            }
+                            className={clsx(
+                              "w-10 h-10 rounded border text-xs font-semibold",
+                              (seat.status === "booked" ||
+                                seat.status === "held") &&
+                                "bg-gray-300 cursor-not-allowed",
+                              multiSelectSeats.includes(seat.seat_code) &&
+                                "bg-primary hover:bg-primary/90 text-white",
+                              seat.status === "available" &&
+                                !multiSelectSeats.includes(seat.seat_code) &&
+                                "bg-white hover:bg-primary/60 border-gray-400",
+                            )}
+                          >
+                            {seat.seat_code}
+                          </button>
+                        </>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Legend */}
+          <div className="flex justify-between text-xs mt-4 gap-2">
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 bg-white border border-gray-400 rounded" />{" "}
+              Available
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 bg-primary border border-primary rounded" />{" "}
+              Selected
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 bg-gray-300 rounded" /> Booked
+            </span>
+          </div>
+
+          <Button
+            className="w-full mt-4"
+            disabled={multiSelectSeats.length === 0}
+            onClick={handleConfirm}
+          >
+            Confirm{" "}
+            {multiSelectSeats.length > 0
+              ? `${multiSelectSeats.length} Seat${multiSelectSeats.length !== 1 ? "s" : ""}`
+              : "Seats"}
+          </Button>
+        </DialogContent>
+      </Dialog>
+      <SeatBookingDialog
+        toggle={open}
+        setToggle={setOpen}
+        onSucess={onSuccess}
+        tripId={trip_id}
+        selectedSeats={selectedSeats}
+        number_of_passengers={selectedSeats.length}
+        operator_id={operator_id}
+      />
+    </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   Zap,
   ChevronDown,
   ScanFace,
+  TicketCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -21,6 +22,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 
 import AvatarHero from "./HeroAvatar";
+import { AddRoad } from "@mui/icons-material";
 
 export default function Sidebar() {
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
@@ -50,7 +52,8 @@ export default function Sidebar() {
         // { label: "Operator Users", href: "/superadmin/operator/manage" },
       ],
     },
-    { icon: BarChart3, label: "Report", href: "/report" },
+    { icon: BarChart3, label: "Report", href: "/superadmin/report" },
+    { icon: AddRoad, label: "Route", href: "/superadmin/route" },
     {
       icon: ScanFace,
       label: "KYC Approval",
@@ -59,7 +62,14 @@ export default function Sidebar() {
         { label: "Agent KYC Approval", href: "/superadmin/agent/kyc" },
       ],
     },
-    { icon: Luggage, label: "Luggage", href: "/luggage" },
+    {
+      icon: TicketCheck,
+      label: "Lottery",
+      subItems: [
+        { label: "Lottery List", href: "/superadmin/lottery" },
+        { label: "Draw Lottery", href: "/superadmin/lottery/draw" },
+      ],
+    },
     { icon: AlertCircle, label: "Settings", href: "/superadmin/settings" },
   ];
 

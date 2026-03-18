@@ -3,25 +3,18 @@
 import {
   MapPin,
   Calendar,
-  Download,
   MoreVertical,
   MoreHorizontal,
+  Users,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-import { useEffect, useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { formatTime, handleSearch } from "@/lib/common_functions";
+import { useState } from "react";
+import { formatTime } from "@/lib/common_functions";
 import { useSearchParams } from "next/navigation";
-import { Item, Trip, TripData } from "@/lib/model";
+import { Bus, Item, Seat, Trip, TripData } from "@/lib/model";
 import { passengerApi } from "@/app/api/api";
 import {
   DropdownMenu,
@@ -32,6 +25,12 @@ import {
 import { TripDetailsModal } from "@/components/TripDetailModal";
 import SeatBookingDialog from "@/components/SeatBookingDialog";
 import { Toaster } from "sonner";
+import { searchResult, useSearchRoute } from "@/components/Query";
+import EtDatePicker from "@/components/eth-calendar/habesha-date-picker/src/EtDatePicker";
+import SeatLayoutDialog from "@/components/SeatLayoutDialog";
+import GuestSeatLayoutDialog from "./GuestSeatLayoutDialog";
+import { Spinner } from "./ui/spinner";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function GuestBooking() {
   const searchParams = useSearchParams();
@@ -40,53 +39,61 @@ export default function GuestBooking() {
     route_to: searchParams.get("to") || "",
     departure_date: searchParams.get("date") || new Date().toString(),
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const per_page = 10;
+  const route_from = searchParams.get("from") || "";
+  const route_to = searchParams.get("to") || "";
+  const departure_date = searchParams.get("date") || new Date().toString();
   const [suggestionsFrom, setSuggestionsFrom] = useState([]);
+  const [seats, setSeats] = useState<Seat[]>([]);
   const [suggestionsTo, setSuggestionsTo] = useState([]);
   const [showDropdownFrom, setShowDropdownFrom] = useState(false);
   const [showDropdownTo, setShowDropdownTo] = useState(false);
-  const [data, setData] = useState<Item[]>([]);
   const [useInfoToggle, setUseInfoToggle] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<TripData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [id, setId] = useState("");
+  const [bus, setBus] = useState<
+    { id: string; plate_no: string } | undefined
+  >();
   const [tripId, setTripId] = useState<string>("");
+  const debounced = useDebounce(form.route_to, 300);
+  const { data, isLoading, refetch } = useSearchRoute(
+    form.route_from,
+    debounced,
+    form.departure_date,
+    currentPage,
+    per_page,
+    undefined,
+  );
+  console.log(data, "logged");
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
 
   function isTrip(item: Item): item is Trip {
     return "trip_id" in item;
   }
 
-  const handleViewDetails = async (trip: Trip) => {
-    const response = await passengerApi.getTripDetails(trip.trip_id);
-    console.log(response, "trip details");
-    setSelectedTrip(response);
-    setIsModalOpen(true);
-  };
-
-  useEffect(() => {
-    handleSearch(form).then((res) => {
-      const data_ = res?.items || [];
-      setData(data_);
-    }); // for it fetch the data on load
-  }, []);
+  // const handleViewDetails = async (trip: searchResult) => {
+  //   const response = await passengerApi.getTripDetails(trip.id);
+  //   console.log(response, "trip details");
+  //   setSelectedTrip(response);
+  //   setIsModalOpen(true);
+  // };
 
   async function handleSubmit(
     e: React.FormEvent<HTMLFormElement>,
   ): Promise<void> {
     e.preventDefault();
-
-    const res = (await handleSearch(form)) ?? {
-      departure_date: form.departure_date,
-      route_from: form.route_from,
-      items: [],
-    };
-    const data_ = res.items;
-    console.log(data_, "items");
-    setData(data_);
+    // Refetch data with updated form values
+    refetch();
   }
+
   const handleSelectFromCity = (city: string) => {
     setForm({ ...form, route_from: city });
     setShowDropdownFrom(false);
     setSuggestionsFrom([]);
   };
+
   const handleSelectToCity = (city: string) => {
     setForm({ ...form, route_to: city });
     setShowDropdownTo(false);
@@ -106,6 +113,7 @@ export default function GuestBooking() {
       console.error("Auto complete error:", error);
     }
   }
+
   function handleAutoCompleteTo(value: string) {
     try {
       setTimeout(async () => {
@@ -114,21 +122,21 @@ export default function GuestBooking() {
         setSuggestionsTo(response);
         setShowDropdownTo(true);
         console.log(response);
-      }, 100);
+      }, 200);
     } catch (error) {
       console.error("Auto complete error:", error);
     }
   }
 
-  async function handleBookNow(trip: Item): Promise<void> {
-    if (isTrip(trip)) {
-      const response = await passengerApi.getTripDetails(trip.trip_id);
-      console.log(trip);
-      setTripId(trip.trip_id);
-    }
+  async function handleBookNow(trip: searchResult): Promise<void> {
+    console.log(trip);
+    const response = await passengerApi.getTripDetails(trip.id);
+    setBus(response.bus);
+    setTripId(trip.id);
+    setId(trip.operator.id);
+
     setUseInfoToggle(true);
   }
-
   return (
     <div className="">
       <Toaster richColors position="top-right" />
@@ -209,15 +217,38 @@ export default function GuestBooking() {
 
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Depart
+                  Departure Date
                 </label>
-                <input
-                  type="date"
-                  value={form.departure_date}
-                  onChange={(e) =>
-                    setForm({ ...form, departure_date: e.target.value })
+                <EtDatePicker
+                  minDate={new Date() ?? undefined}
+                  value={
+                    form.departure_date
+                      ? (() => {
+                          const [y, m, d] = form.departure_date
+                            .split("-")
+                            .map(Number);
+                          return new Date(y, m - 1, d); // LOCAL date
+                        })()
+                      : null
                   }
-                  className="w-full px-4 py-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-[#00a896]"
+                  sx={{ color: "#00a896", width: "100%" }}
+                  onChange={(
+                    date: Date | [Date | null, Date | null] | null,
+                  ) => {
+                    let selectedDate: Date | null = null;
+                    if (Array.isArray(date)) {
+                      selectedDate = date[0] ?? null;
+                    } else {
+                      selectedDate = date ?? null;
+                    }
+                    setForm({
+                      ...form,
+                      departure_date: selectedDate
+                        ? selectedDate.toISOString().split("T")[0]
+                        : "",
+                    });
+                  }}
+                  className="w-full px-4 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-[#00a896]"
                 />
               </div>
 
@@ -230,14 +261,14 @@ export default function GuestBooking() {
           </Card>
         </form>
       </div>
-      <div className="w-full flex justify-center mt-8 mb-8">
+      <div className="w-full hidden md:flex justify-center mt-8 mb-8">
         <Card className="hover:shadow-lg w-[70%] p-4 rounded-md border border-gray-300">
           <CardContent className="px-4 py-2 flex space-x-[40%] items-center">
             <div>
               <h2 className="text-lg font-mono mb-2.5">Departure</h2>
-              <div className="text-md font-mono">{form.route_from}</div>
+              <div className="text-md font-mono">{route_from}</div>
               <div className="text-md font-mono">
-                {formatTime(form.departure_date)}
+                {formatTime(departure_date)}
               </div>
             </div>
 
@@ -245,9 +276,9 @@ export default function GuestBooking() {
               <div className="h-full py-2 w-[1px] bg-gray-400 mx-2"></div>
               <div>
                 <h2 className="text-lg font-mono mb-2.5">Return</h2>
-                <div className="text-md font-mono">{form.route_to}</div>
+                <div className="text-md font-mono">{route_to}</div>
                 <div className="text-md font-mono">
-                  {formatTime(form.departure_date)}
+                  {formatTime(departure_date)}
                 </div>
               </div>
             </div>
@@ -265,120 +296,194 @@ export default function GuestBooking() {
             </p>
           </div>
 
-          {data.length === 0 ? (
+          {isLoading ? (
+            <div className="rounded-xl bg-white p-12  flex justify-center text-center shadow-sm">
+              <Spinner />
+            </div>
+          ) : data?.items.length === 0 ? (
             <div className="rounded-xl bg-white p-12 text-center shadow-sm">
               <p className="text-gray-500">No trips found</p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl bg-white shadow-lg">
-              <Table>
-                <TableHeader className="">
-                  <TableRow className="border border-gray-200 bg-gradient-to-r from-teal-50 to-blue-50 hover:bg-gradient-to-r hover:from-teal-50 hover:to-blue-50">
-                    <TableHead className="font-semibold text-gray-900">
-                      Bus Name
-                    </TableHead>
-                    <TableHead className="font-semibold text-gray-900">
-                      Departure
-                    </TableHead>
-                    <TableHead className="font-semibold text-gray-900">
-                      Arrival
-                    </TableHead>
-                    <TableHead className="font-semibold text-gray-900">
-                      Duration
-                    </TableHead>
-                    <TableHead className="text-right font-semibold text-gray-900">
-                      Fare
-                    </TableHead>
-                    <TableHead className="text-center font-semibold text-gray-900">
-                      Seats
-                    </TableHead>
-                    <TableHead className="text-center font-semibold text-gray-900">
-                      Action
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-
-                <TableBody>
-                  {data.map((route, index) => (
-                    <TableRow
-                      key={index}
-                      className="border-b p border-gray-100 transition-colors hover:bg-teal-50/50"
+            <div className="w-full">
+              {/* Routes Grid */}
+              <div className="grid gap-6 grid-cols-1">
+                {(data?.items || [])?.length > 0 ? (
+                  data?.items.map((route) => (
+                    <div
+                      key={route.id}
+                      className="group relative bg-card/70 backdrop-blur-sm border border-border/60 rounded-2xl p-6 
+        hover:shadow-xl hover:shadow-primary/5 hover:border-primary/40 
+        transition-all duration-300 ease-out"
                     >
-                      <TableCell className="py-4 font-medium text-gray-900">
-                        {route.operator.operator_name}
-                      </TableCell>
-                      <TableCell className="py-4 text-gray-700">
-                        {form.route_from}
-                      </TableCell>
-                      <TableCell className="py-4 text-gray-700">
-                        {form.route_to}
-                      </TableCell>
-                      <TableCell className="py-4 text-gray-700">
-                        {formatTime(route.departure_at)}
-                      </TableCell>
-                      <TableCell className="py-4 text-right font-semibold text-teal-600">
-                        {route.price} Birr
-                      </TableCell>
-                      <TableCell className="py-4 text-center">
-                        <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
-                          12 Available
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-4 ">
-                        <div className="flex justify-center">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            className="mr-1.5"
-                            onClick={() => handleBookNow(route)}
+                      {/* Top Section */}
+                      <div className="flex items-start justify-between mb-5">
+                        <div>
+                          <h3
+                            className="text-lg font-semibold tracking-tight text-foreground 
+            group-hover:text-primary transition-colors duration-300"
                           >
-                            Book Now
-                          </Button>
-                          <div className="ml-2">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 hover:bg-teal-100"
-                                >
-                                  <MoreHorizontal className="h-6 w-6 text-gray-600" />
-                                  <span className="sr-only">Open menu</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem
-                                  className="cursor-pointer "
-                                  onClick={() => {
-                                    if (isTrip(route)) {
-                                      handleViewDetails(route);
-                                    }
-                                  }}
-                                >
-                                  View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="cursor-pointer">
-                                  Check Seats
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            {route.operator.name}
+                          </h3>
+                        </div>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="rounded-full hover:bg-muted/60"
+                            >
+                              <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem
+                            // onClick={() => handleViewDetails(route)}
+                            >
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>Check Seats</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      {/* <div className="flex items-center justify-between mb-6">
+                        <div className="flex flex-col">
+                          <span className="text-xs  tracking-wider text-muted-foreground">
+                            From
+                          </span>
+                          <span className="text-base font-semibold">
+                            {form.route_from}
+                          </span>
+                        </div>
+
+                        <div className="flex-1 mx-4 border-t border-dashed border-border relative">
+                          <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-card px-2 text-xs text-muted-foreground">
+                            → Direct
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col text-right">
+                          <span className="text-xs  tracking-wider text-muted-foreground">
+                            To
+                          </span>
+                          <span className="text-base font-semibold">
+                            {form.route_to}
+                          </span>
+                        </div>
+                      </div> */}
+
+                      {/* Info Section */}
+                      <div className="grid grid-cols-3 gap-4 mb-6">
+                        {/* Price */}
+                        <div className="flex flex-col">
+                          <span className="text-xs text-muted-foreground  tracking-wide">
+                            Price
+                          </span>
+                          <span className="text-2xl font-bold text-primary">
+                            {route.price}
+                            <span className="text-sm font-medium ml-1 text-muted-foreground">
+                              Birr
+                            </span>
+                          </span>
+                        </div>
+
+                        {/* Seats */}
+                        <div className="flex flex-col items-center">
+                          <span className="text-xs text-muted-foreground tracking-wide">
+                            Departure Time
+                          </span>
+                          <div className="flex items-center justify-center mt-1 px-3 py-1 rounded-full bg-green-500/10">
+                            <span className="text-sm font-semibold text-black">
+                              {route.departure_time.split(":")[0]} :{" "}
+                              {route.departure_time.split(":")[1]}
+                            </span>
                           </div>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+
+                        {/* Status */}
+                        <div className="flex flex-col items-center">
+                          <span className="text-xs text-muted-foreground  tracking-wide">
+                            Status
+                          </span>
+                          <div
+                            className="flex items-center gap-2 mt-1 px-3 py-1 rounded-full 
+            bg-green-500/10 text-green-600"
+                          >
+                            <span className="text-sm font-semibold">
+                              {route.is_available ? "Available" : "Sold Out"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CTA */}
+                      <Button
+                        onClick={() => handleBookNow(route)}
+                        className="w-full h-11 rounded-xl font-semibold 
+          bg-primary hover:bg-primary/90 
+          shadow-md hover:shadow-lg transition-all duration-300"
+                      >
+                        Book Now
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full py-16 text-center">
+                    <p className="text-muted-foreground text-sm">
+                      No routes available for your search
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
+        {(data?.total ?? 0) > 0 && (
+          <div className="flex mt-4 items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * per_page + 1} to{" "}
+              {(currentPage - 1) * per_page + (data?.total ?? 0)} of{" "}
+              {data?.total} entries
+            </p>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                Previous
+              </Button>
+              <Button className="bg-primary text-primary-foreground">
+                {currentPage}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                disabled={(data?.total ?? 0) <= currentPage * per_page}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
+
       <div className="hidden">
-        <SeatBookingDialog
-          toggle={useInfoToggle}
-          setToggle={setUseInfoToggle}
-          tripId={tripId}
-        />
+        {bus && (
+          <GuestSeatLayoutDialog
+            toggle={useInfoToggle}
+            setToggle={setUseInfoToggle}
+            setSelectedSeats={setSelectedSeats}
+            seats={seats}
+            setSeats={setSeats}
+            trip_id={tripId}
+            selectedSeats={selectedSeats}
+            operator_id={id}
+          />
+        )}
         <TripDetailsModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}

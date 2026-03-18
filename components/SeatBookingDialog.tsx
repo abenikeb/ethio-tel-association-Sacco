@@ -10,89 +10,115 @@ import {
 } from "@/components/ui/dialog";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import SeatLayoutDialog from "./SeatLayoutDialog";
+import SeatLayoutDialog from "./GuestSeatLayoutDialog";
+import PassengerInfoForm from "./PassengerInfoForm";
 import type { Bus, Passenger, Seat } from "@/lib/model";
-import { passengerApi, tempAPI } from "@/app/api/api";
+import { operatorApi, passengerApi } from "@/app/api/api";
 import { toast, Toaster } from "sonner";
 import { isAxiosError } from "axios";
-import { useAuth } from "@/lib/authContext";
 
 type SeatBookingDialogProps = {
   toggle: boolean;
+  selectedSeats: string[];
   setToggle: (val: boolean) => void;
+  number_of_passengers: number;
   tripId: string;
+  onSucess?: () => void;
+  operator_id: string;
 };
 
 export default function SeatBookingDialog({
   tripId,
+  selectedSeats,
+  number_of_passengers,
   toggle,
+  operator_id,
+  onSucess,
   setToggle,
 }: SeatBookingDialogProps) {
-  console.log(tripId, "tripId in dialog");
-  console.log("Rendering...");
-  const [step, setStep] = useState<1 | 2>(1);
-  const [seatCount, setSeatCount] = useState("");
+  // Step 1: Passenger Info, Step 2: Seat Selection, Step 3: Confirmation
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+
+  // Passenger information state
+  const [passengers, setPassengers] = useState<Passenger[]>([
+    {
+      name: "",
+      email: "",
+      phone: "",
+      id_number: "",
+    },
+  ]);
+
+  // Seat selection state
   const [seatToggle, setSeatToggle] = useState(false);
-  const [passengers, setPassengers] = useState<Passenger[]>([]);
-  const [seatArr, setSeatArr] = useState<string[]>([]);
-  const [seatDict, setSeatDict] = useState<Record<string, Passenger>>({});
-  const [indexBeingEdited, setIndexBeingEdited] = useState<number | null>(null);
-  const [bus, setBus] = useState<Bus>();
-  const [idx, setIdx] = useState<number>();
+
   const [seats, setSeats] = useState<Seat[]>([]);
+
+  const [seatDict, setSeatDict] = useState<Record<string, Passenger>>({});
+  const [currentPassengerIndex, setCurrentPassengerIndex] = useState<number>(0);
   const [editingPassenger, setEditingPassenger] = useState<
     Record<number, number>
   >({});
-
-  const [selectedSeats, setSelectedSeats] = useState<Record<number, string>>(
-    {},
-  );
+  const [passengerArray, setPassengerArr] = useState<Passenger[]>([]);
 
   useEffect(() => {
-    const fetch = async () => {
-      if (tripId.length == 0) return;
-      const response = await passengerApi.getTripDetails(tripId);
+    if (!number_of_passengers || number_of_passengers <= 0) return;
 
-      setBus(response.bus);
-    };
-    fetch();
-  }, [tripId]);
-
-  const handleProceed = () => {
     setPassengers(
-      Array.from({ length: Number(seatCount) }, () => ({
+      Array.from({ length: number_of_passengers }, () => ({
         name: "",
         email: "",
         phone: "",
         id_number: "",
       })),
     );
+  }, [number_of_passengers]);
+
+  // Handle moving from passenger info to seat selection
+  const handlePassengerInfoNext = () => {
     setStep(2);
+    setCurrentPassengerIndex(0);
+    setSeatToggle(true);
   };
 
-  const updatePassenger = (
-    index: number,
-    field: keyof Passenger,
-    value: string,
-  ) => {
-    const updated = [...passengers];
-    updated[index][field] = value;
-    setPassengers(updated);
+  // Handle seat selection for a passenger
+  const handleSeatSelected = (seatId: string) => {
+    setSeatDict((prev) => ({
+      ...prev,
+      [seatId]: passengers[currentPassengerIndex],
+    }));
+
+    // Move to next passenger or finish
+    if (currentPassengerIndex < passengers.length - 1) {
+      setCurrentPassengerIndex((prev) => prev + 1);
+
+      setEditingPassenger((prev) => ({
+        ...prev,
+        [currentPassengerIndex + 1]: (prev[currentPassengerIndex + 1] ?? 0) + 1,
+      }));
+    } else {
+      // All passengers have seats selected, move to confirmation
+      setSeatToggle(false);
+      setStep(3);
+    }
   };
 
+  // Handle final booking submission
   const handleSubmit = async () => {
     const seatArr = Object.keys(seatDict);
     const passengerArr = Object.values(seatDict);
+    console.log(passengerArr, "passenger array");
+    setPassengerArr(passengerArr);
+
     let uuid = uuidv4();
 
     try {
-      if (seatArr.length == 0 || passengerArr.length == 0) return;
+      console.log(selectedSeats, passengers);
+      if (selectedSeats.length === 0 || passengers.length === 0) return;
 
       const response = await passengerApi.holdSeat(tripId, {
-        seat_codes: seatArr,
-        passenger_details: passengerArr,
+        seat_codes: selectedSeats,
+        passenger_details: passengers,
         client_ref: uuid,
       });
 
@@ -103,20 +129,26 @@ export default function SeatBookingDialog({
       );
 
       toast.success("Seats successfully booked!", { duration: 3000 });
+      onSucess?.();
 
-      setPassengers(
-        Array.from({ length: Number(seatCount) }, () => ({
+      // Reset state
+      setPassengers([
+        {
           name: "",
           email: "",
           phone: "",
           id_number: "",
-        })),
-      );
+        },
+      ]);
       setToggle(false);
+      setStep(1);
     } catch (error) {
       if (isAxiosError(error)) {
+        console.error("Axios error:", error.response?.data || error.message);
         if (error.response?.data.detail) {
-          toast.error(error.response?.data.detail?.[0].msg, { duration: 3000 });
+          toast.error(`${error.response?.data.detail?.[0].msg}`, {
+            duration: 3000,
+          });
         } else {
           toast.error(error.response?.data.error, { duration: 3000 });
         }
@@ -130,149 +162,93 @@ export default function SeatBookingDialog({
     }
   };
 
-  function handleSeatSelection(arg0: Passenger) {
-    setSeatToggle(true);
-  }
-  if (!bus) {
-    return <>Loading</>;
-  }
-  function handleBack(): void {
+  const handleBack = () => {
+    if (step === 2) {
+      // Going back from seat selection to passenger info
+      setStep(1);
+      setSeatToggle(false);
+      setCurrentPassengerIndex(0);
+    } else if (step === 3) {
+      // Going back from confirmation to seat selection
+      setStep(2);
+      setCurrentPassengerIndex(passengers.length - 1);
+      setSeatToggle(true);
+    }
+  };
+
+  const handleDialogClose = () => {
+    setToggle(false);
     setStep(1);
+    setPassengers([
+      {
+        name: "",
+        email: "",
+        phone: "",
+        id_number: "",
+      },
+    ]);
     setSeatDict({});
-    setSeatArr([]);
-    setSelectedSeats({});
-    setSeats(bus?.seat_template.seats || []); // reset seat statuses
-    setIdx(undefined);
-    setIndexBeingEdited(null);
-  }
+
+    setCurrentPassengerIndex(0);
+    setEditingPassenger({});
+  };
+  console.log("opening the seat booking");
+
   return (
     <div>
-      <Toaster richColors position="top-right"></Toaster>
+      <Toaster richColors position="top-right" />
       <Dialog open={toggle} onOpenChange={setToggle}>
-        <DialogTrigger asChild>
+        {/* <DialogTrigger asChild>
           <Button>Book Seats</Button>
-        </DialogTrigger>
+        </DialogTrigger> */}
 
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {step === 1 ? "Select Seats" : "Passenger Details"}
+              {step === 1 && "Enter Passenger Information"}
+              {step === 2 && "Review & Confirm Booking"}
             </DialogTitle>
           </DialogHeader>
 
-          {/* STEP 1: Seat Selection */}
+          {/* STEP 1: Passenger Information */}
           {step === 1 && (
-            <div className="space-y-4">
-              <div>
-                <Label className="mt-3 mb-4">Number of Seats</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={seatCount}
-                  onChange={(e) => setSeatCount(e.target.value)}
-                />
-              </div>
-
-              <Button className="w-full" onClick={handleProceed}>
-                Proceed
-              </Button>
-            </div>
+            <PassengerInfoForm
+              numberOfPassengers={number_of_passengers}
+              passengers={passengers}
+              onPassengersChange={setPassengers}
+              onNext={handlePassengerInfoNext}
+            />
           )}
 
-          {/* STEP 2: Passenger Forms */}
           {step === 2 && (
             <div className="space-y-6">
-              {passengers.map((passenger, index) => (
-                <div key={index} className="border rounded-xl p-4 space-y-4">
-                  <h3 className="font-semibold">Passenger {index + 1}</h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="mb-3" htmlFor="name">
-                        Name <span className="text-red-400">*</span>
-                      </Label>
-                      <Input
-                        required
-                        value={passenger.name}
-                        id="name"
-                        onChange={(e) =>
-                          updatePassenger(index, "name", e.target.value)
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label className="mb-2" htmlFor="email">
-                        Email
-                      </Label>
-                      <Input
-                        type="email"
-                        value={passenger.email}
-                        id="email"
-                        onChange={(e) =>
-                          updatePassenger(index, "email", e.target.value)
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="mb-2" htmlFor="phone">
-                        Phone Number <span className="text-red-400">*</span>
-                      </Label>
-                      <Input
-                        required
-                        value={passenger.phone}
-                        id="phone"
-                        onChange={(e) =>
-                          updatePassenger(index, "phone", e.target.value.trim())
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label className="mb-2" htmlFor="id_number">
-                        ID Number <span className="text-red-400">*</span>
-                      </Label>
-                      <Input
-                        required
-                        id="id_number"
-                        value={passenger.id_number}
-                        onChange={(e) =>
-                          updatePassenger(index, "id_number", e.target.value)
-                        }
-                      />
-                    </div>
-                    <Button
-                      variant="default"
-                      disabled={
-                        passenger.name === "" ||
-                        passenger.phone === "" ||
-                        passenger.id_number === ""
-                      }
-                      onClick={() => {
-                        setIndexBeingEdited(index);
-                        handleSeatSelection(passengers[index]);
-                        setIdx(index);
-                        setEditingPassenger((prev) => ({
-                          ...prev,
-                          [index]: (prev[index] ?? 0) + 1,
-                        }));
-                      }}
-                    >
-                      {`Select Seat ${
-                        Object.entries(seatDict).find(
-                          ([, p]) => p === passenger,
-                        )?.[0] || ""
-                      }`}
-                    </Button>
+              <div>
+                <h3 className="font-semibold mb-4">Booking Summary</h3>
+                {passengers.map((passenger, index) => (
+                  <div
+                    key={index}
+                    className="border rounded p-3 mb-2 bg-gray-50"
+                  >
+                    <p className="font-medium">{passenger.name}</p>
+                    <p className="text-sm text-gray-600">
+                      Seat: {selectedSeats[index] || "N/A"}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Phone: {passenger.phone}
+                    </p>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
 
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => handleBack()}>
+                <Button variant="outline" onClick={handleBack}>
                   Back
                 </Button>
-
-                <Button className="flex-1" onClick={handleSubmit}>
+                <Button
+                  className="flex-1"
+                  disabled={selectedSeats.length != passengers.length}
+                  onClick={handleSubmit}
+                >
                   Confirm Booking
                 </Button>
               </div>
@@ -280,26 +256,6 @@ export default function SeatBookingDialog({
           )}
         </DialogContent>
       </Dialog>
-      <SeatLayoutDialog
-        toggle={seatToggle}
-        // toggle={editingPassenger === idx}
-        setToggle={setSeatToggle}
-        setSelectedSeats={setSelectedSeats}
-        selectedSeats={selectedSeats}
-        editingPassenger={editingPassenger}
-        bus={bus!}
-        seats={seats!}
-        idx={Number(idx)}
-        setSeats={setSeats}
-        onSelect={(seatId) => {
-          // Map selected seat to the current passenger
-          setSeatDict((prev) => ({
-            ...prev,
-            [seatId]: passengers[indexBeingEdited ?? 0], // track which passenger is selecting
-          }));
-          // setSelectedSeat(seatId); // optional if you want to show it in UI
-        }}
-      />
     </div>
   );
 }

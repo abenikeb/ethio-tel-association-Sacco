@@ -1,3 +1,5 @@
+import { searchResult } from "@/components/Query";
+
 export interface AddOperatorForm {
   name: string;
   slug: string;
@@ -82,6 +84,19 @@ export interface Role {
   name: string;
   slug: string;
 }
+export interface getLotteryListDTO {
+  ticket_id: string;
+  booking_id: string;
+  booking_ref: string;
+  lottery_number: string;
+  passenger_name: string;
+  trip_id: string;
+  route_from: string;
+  route_to: string;
+  departure_at: string; // ISO string
+  created_at: string; // ISO string
+  status: string;
+}
 
 export type CreateTripPayload = {
   operator_id?: string;
@@ -109,6 +124,53 @@ export interface OperatorAgent {
   verification: {
     additionalProp1: {};
   };
+}
+export interface RefundDetail {
+  id: string;
+
+  booking: {
+    id: string;
+    booking_ref: string;
+    total_amount: number;
+    passenger_count: number;
+
+    passengers: {
+      name: string;
+      seat_code: string;
+      fare: number;
+    }[];
+  };
+
+  operator_id: string;
+  agent_id: string;
+  booked_by_id: string;
+  booked_by_name: string;
+
+  processed_amount: number;
+  processed_by_id: string;
+  processed_by_name: string;
+  processed_at: string;
+
+  method: string;
+  notes: string;
+  status: string;
+  external_ref: string;
+
+  created_at: string;
+  updated_at: string;
+}
+export interface Refund {
+  id: string;
+  booking_id: string;
+  booking_ref: string;
+  passenger_name: string;
+  total_amount: number;
+  processed_amount: number;
+  status: "pending" | "completed" | "failed" | "processing";
+  method: string;
+  created_at: string;
+  processed_at: string;
+  notes?: string;
 }
 
 export interface User {
@@ -165,7 +227,8 @@ export interface Seat {
   status: "available" | "booked" | "held";
   row: number;
   col: number;
-  extra_metadata: SeatExtraMetadata;
+  fare?: number;
+  extra_metadata?: SeatExtraMetadata;
 }
 
 export interface SeatTemplate {
@@ -238,20 +301,36 @@ export type Passenger = {
   phone: string;
   id_number: string;
 };
+export interface RouteDTO {
+  id: string;
+  route_from: string;
+  route_to: string;
+  distance_km: number;
+  estimated_duration_minutes: number;
+}
 
 export interface Trip {
+  id?: string;
   trip_id: string;
   available_seats: number;
+  route_from?: string;
+  route_to?: string;
   operator: {
     operator_id: string;
     operator_name: string;
   };
+  driver?: {
+    name: string;
+  };
+  operator_id?: string;
+  bus_id?: string;
+  driver_id?: string;
   departure_at: string;
   price: number;
   created_at: string;
   updated_at: string;
 }
-export type Item = Trip | Route;
+export type Item = Trip | Route | searchResult;
 
 export interface SearchRouteResponse {
   route_from: string;

@@ -64,23 +64,24 @@ export const AuthProvider = ({
       const response = await authAPI.login(identifier, password, remember);
 
       setUser(response.user_info);
-      console.log(response);
 
       if (response) {
         await setAuthCookies(response);
         const decoded = await decodeJWT(response.access_token);
+        console.log(response.access_token);
 
         if (decoded.roles.includes("passenger")) {
-          // route.replace("/passenger");
           window.location.replace("/passenger");
         } else if (decoded.roles.includes("super_admin")) {
-          // route.replace("/superadmin");
           window.location.replace("/superadmin");
         } else if (decoded.roles.includes("agent_admin")) {
-          // route.replace("/agent");
-          window.location.replace("/agent/ticket-booking");
+          if (response.user_info.agent_type == "operator-agent-admin") {
+            window.location.replace("/operator-agent/ticket-booking");
+          } else {
+            window.location.replace("/agent/ticket-booking");
+          }
+          console.log(response, "here is the response");
         } else if (decoded.roles.includes("operator_admin")) {
-          // route.replace("/operator");
           window.location.replace("/operator");
         } else {
           console.log("No role matched");

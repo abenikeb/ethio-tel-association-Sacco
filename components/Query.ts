@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  agentApi,
+  DanuAgentApi,
   kycApi,
   operatorApi,
   passengerApi,
@@ -10,14 +12,63 @@ import {
   Agent,
   CreateTripPayload,
   Driver,
+  getLotteryListDTO,
   History,
   KYCDocument,
   KYCUpload,
   Operator,
   OperatorAgent,
+  Refund,
+  RefundDetail,
+  RouteDTO,
+  SearchRouteResponse,
   Session,
+  Trip,
   User,
 } from "@/lib/model";
+import { ScheduleDTO } from "@/app/(dashboard)/(operator)/operator/trips/page";
+export interface Trips_s {
+  id: string;
+  trip_id: string;
+  operator_id: string;
+  bus_id: string;
+  driver_id: string;
+  available_seats: number;
+  route_from: string;
+  route_to: string;
+  departure_at: string;
+  price: number;
+  created_at: string;
+  updated_at: string;
+  operator: {
+    operator_id: string;
+    operator_name: string;
+  };
+  driver?: {
+    id: string;
+    name: string;
+  };
+}
+export interface searchResult {
+  id: string;
+  operator: {
+    id: string;
+    name: string;
+  };
+  bus: {
+    plate_no: string;
+    id: string;
+  };
+  driver: {
+    id: string;
+    name: string;
+  };
+  departure_time: string;
+  price: number;
+  is_available: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export const useUsers = (page?: number, per_page?: number, noCache = false) => {
   return useQuery({
@@ -51,6 +102,96 @@ export const usePassengerHistory = (page: number, per_page: number) => {
     },
   });
 };
+
+export const useSuperAdminStat = () => {
+  return useQuery({
+    queryKey: ["superadmin-stat"],
+    queryFn: async () => {
+      const res = await superAdminApi.getStats();
+      return res;
+    },
+  });
+};
+export const useOperatorAgentReportData = (
+  operator_id: string,
+  from_date: string,
+  to_date: string,
+  page?: number,
+  per_page?: number,
+) => {
+  return useQuery({
+    queryKey: [
+      "operator-agent-report",
+      operator_id,
+      from_date,
+      to_date,
+      page,
+      per_page,
+    ],
+    queryFn: async () => {
+      const res = await agentApi.getReportData(
+        operator_id,
+        from_date,
+        to_date,
+        page,
+        per_page,
+      );
+      console.log(res, "from query");
+      return {
+        items: res.items as {
+          ticket_id: string;
+          bus_plate_number: string;
+          route_from: string;
+          route_to: string;
+          passenger_name: string;
+          seat_no: string;
+          price: 0;
+          sold_by: string;
+          agent_type: string;
+        }[],
+        total: res.total,
+        date: res.date,
+        tickets_sold: res.tickets_sold,
+        revenue: res.revenue,
+        page: res.page,
+      };
+    },
+  });
+};
+export const useSearchRoute = (
+  route_from: string,
+  route_to: string,
+  departure_date: string,
+  page?: number,
+  per_page?: number,
+  org_id?: string,
+) => {
+  return useQuery({
+    queryKey: [
+      "search_route",
+      route_from,
+      route_to,
+      departure_date,
+      org_id,
+      page,
+      per_page,
+    ],
+    queryFn: async () => {
+      const res = await passengerApi.searchRoute({
+        route_from,
+        route_to,
+        departure_date,
+        page,
+        per_page,
+      });
+
+      let items: searchResult[] = !org_id
+        ? res.items
+        : res.items.filter((t: searchResult) => t.operator.id == org_id);
+      return { items, total: res.total, page: res.page };
+    },
+  });
+};
 export const useOperator = (page: number, per_page: number) => {
   return useQuery({
     queryKey: ["operator", page, per_page],
@@ -65,17 +206,68 @@ export const useOperator = (page: number, per_page: number) => {
     staleTime: 1000 * 60 * 5,
   });
 };
-export const useTrips = (operator_id: string) => {
+
+export const useOperatorStatCard = (operator_id: string) => {
   return useQuery({
-    queryKey: ["trips", operator_id],
+    queryKey: ["operator_stat_card", operator_id],
     queryFn: async () => {
-      if (!operator_id) return [];
-      const res = await operatorApi.getAllTrips(operator_id, 10);
-      return res.items;
+      const res = await operatorApi.getReportStatCard(operator_id);
+      return res as {
+        operator_id: string;
+        operator_name: string;
+        date: string;
+        today_revenue: number;
+        tickets_sold_today: number;
+        total_tickets_by_agents: number;
+      };
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: !!operator_id,
+  });
+};
+
+export const useTrips = (
+  operator_id: string,
+  page: number = 1,
+  per_page: number = 10,
+) => {
+  return useQuery<{
+    items: ScheduleDTO[];
+    total: number;
+    page: number;
+  }>({
+    queryKey: ["trips", operator_id, page, per_page],
+    queryFn: async () => {
+      if (!operator_id) {
+        return { items: [], total: 0, page: 1 };
+      }
+
+      const res = await operatorApi.getAllTrips(operator_id, page, per_page);
+
+      return {
+        items: res.items as ScheduleDTO[],
+        total: res.total,
+        page: res.page,
+      };
     },
     staleTime: 1000 * 60 * 5,
     retry: false,
     enabled: !!operator_id,
+  });
+};
+export const useRoutes = (page?: number, per_page?: number) => {
+  return useQuery({
+    queryKey: ["routes", page, per_page],
+    queryFn: async () => {
+      const res = await superAdminApi.listRoutes();
+      console.log(res);
+      return {
+        items: res.items as RouteDTO[],
+        total: res.total,
+        page: res.page,
+      };
+    },
+    staleTime: 5 * 60 * 1000,
   });
 };
 
@@ -185,6 +377,33 @@ export const useCreateDriver = () => {
     },
   });
 };
+
+export const useLotteryList = (
+  page?: number,
+  per_page?: number,
+  from_date?: Date,
+  to_date?: Date,
+) => {
+  return useQuery({
+    queryKey: ["lottery", page, per_page],
+    queryFn: async () => {
+      const res = await superAdminApi.getLotteryList(
+        page,
+        per_page,
+        from_date,
+        to_date,
+      );
+
+      return {
+        items: res.items as getLotteryListDTO[],
+        total: res.total,
+        page: res.page,
+      };
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+};
+
 export const OperatorUseUploadKyc = () => {
   const queryClient = useQueryClient();
 
@@ -202,7 +421,6 @@ export const OperatorUseUploadKyc = () => {
     },
   });
 };
-
 export const useCreateOperatorAgent = () => {
   const queryClient = useQueryClient();
   return useMutation<
@@ -240,7 +458,7 @@ export const useOperatorAgent = (
     queryKey: ["operator_agent", operator_id, page, per_page],
     queryFn: async () => {
       if (!operator_id) return { items: [], total: 0, page: 1 };
-      const res = await operatorApi.getOperatorAgent(
+      const res = await operatorApi.getOperatorAgents(
         page,
         per_page,
         operator_id,
@@ -253,6 +471,184 @@ export const useOperatorAgent = (
     },
     staleTime: 1000 * 60 * 5,
     enabled: !!operator_id,
+  });
+};
+
+export const useOperatorReport = (
+  operator_id: string,
+  page: number,
+  per_page: number,
+  from_date?: string,
+  to_date?: string,
+) => {
+  return useQuery({
+    queryKey: [
+      "operator_report",
+      operator_id,
+      page,
+      per_page,
+      from_date,
+      to_date,
+    ],
+    queryFn: async () => {
+      const res = await operatorApi.getReport(
+        operator_id,
+        page,
+        per_page,
+        from_date,
+        to_date,
+      );
+      return res;
+    },
+    enabled: !!operator_id,
+    staleTime: 1000 * 60 * 5,
+  });
+};
+export const useOperatorReport2 = (
+  operator_id: string,
+  start_date: string,
+  end_date: string,
+  bus_plate?: string,
+  route_id?: string,
+  agent_id?: string,
+  page?: number,
+  per_page?: number,
+) => {
+  return useQuery({
+    queryKey: [
+      "operator_report",
+      operator_id,
+      start_date,
+      end_date,
+      bus_plate,
+      route_id,
+      agent_id,
+      page,
+      per_page,
+    ],
+    queryFn: async () => {
+      const res = await operatorApi.getReportData(
+        operator_id,
+        start_date,
+        end_date,
+        bus_plate,
+        route_id,
+        agent_id,
+        page,
+        per_page,
+      );
+
+      return {
+        items: res.items as {
+          ticket_id: string;
+          bus_plate_number: string;
+          route_from: string;
+          route_to: string;
+          passenger_name: string;
+          seat_no: string;
+          price: number;
+          sold_by: string;
+          agent_type: string;
+        }[],
+        tickets_sold: res.tickets_sold,
+        revenue: res.revenue,
+        total: res.total,
+        page: res.page,
+      };
+    },
+    enabled: !!operator_id,
+    staleTime: 1000 * 60 * 5,
+  });
+};
+
+export const useOperatorAgentDetail = (
+  operator_id: string,
+  agent_id: string,
+) => {
+  return useQuery({
+    queryKey: ["operator_agent_detail", operator_id, agent_id],
+    queryFn: async () => {
+      if (!operator_id || !agent_id) return null;
+      const res = await operatorApi.getOperatorAgentDetail(
+        operator_id,
+        agent_id,
+      );
+      return res as OperatorAgent;
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: !!operator_id && !!agent_id,
+  });
+};
+
+export const useDanuAgentRefundList = (
+  agent_id: string,
+  page?: number,
+  per_page?: number,
+) => {
+  return useQuery({
+    queryKey: ["danu_agent_refund_list", agent_id, page, per_page],
+    queryFn: async () => {
+      const res = await DanuAgentApi.getRefundList(agent_id, page, per_page);
+      return res.items as Refund[];
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: !!agent_id,
+  });
+};
+export const useAgentRefundList = (
+  organzation_id: string,
+  page?: number,
+  per_page?: number,
+) => {
+  return useQuery({
+    queryKey: ["danu_agent_refund_list", organzation_id, page, per_page],
+    queryFn: async () => {
+      const res = await agentApi.getRefundList(organzation_id, page, per_page);
+      return res.items as Refund[];
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: !!organzation_id,
+  });
+};
+export const useOperatorRefundList = (
+  operator_id: string,
+  page?: number,
+  per_page?: number,
+  from_date?: string,
+  to_date?: string,
+) => {
+  return useQuery({
+    queryKey: [
+      "operator_refund_list",
+      operator_id,
+      page,
+      per_page,
+      from_date,
+      to_date,
+    ],
+    queryFn: async () => {
+      const res = await operatorApi.getRefundList(
+        operator_id,
+        page,
+        per_page,
+        from_date,
+        to_date,
+      );
+      return res.items as Refund[];
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: !!operator_id,
+  });
+};
+export const useRefundDetail = (operator_id: string, refund_id: string) => {
+  return useQuery({
+    queryKey: ["refund_detail", operator_id, refund_id],
+    queryFn: async () => {
+      const res = await operatorApi.getRefundDetail(operator_id, refund_id);
+      return res as RefundDetail;
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: !!operator_id && !!refund_id,
   });
 };
 export const AgentUseUploadKyc = () => {

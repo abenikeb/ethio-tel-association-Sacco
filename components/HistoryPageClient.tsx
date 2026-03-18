@@ -13,21 +13,49 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { usePassengerHistory } from "@/components/Query";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
+import { passengerApi } from "@/app/api/api";
+import CancelTripDialog from "./CancelBookingConfirm";
 
 export default function HistoryPageClient() {
   const [currentPage, setCurrentPage] = useState(1);
   const data = useSearchParams();
   const router = useRouter();
-  const numberOfCard = 3;
+
+  const [bookingId, setBookingId] = useState<string>("");
+  const numberOfCard = 5;
   const {
     data: bookings,
     isLoading,
     error,
+    refetch,
   } = usePassengerHistory(currentPage, numberOfCard);
+  const [open, setOpen] = useState(false);
+
+  const canCancel = (departure_at: string) => {
+    const now = new Date().getTime();
+    const departure = new Date(departure_at).getTime();
+
+    const diffMs = departure - now;
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    return diffDays >= 0 && diffDays <= 5;
+  };
+  async function cancelBooking(id: string) {
+    await passengerApi.cancelBooking(id);
+    refetch();
+  }
 
   if (isLoading) {
     return (
@@ -73,11 +101,13 @@ export default function HistoryPageClient() {
         <ArrowLeft size={24} className="w-6 h-6 text-gray-700" />
       </Button>
       <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+        <div className="mb-8 mt-4">
+          <h1 className="text-center text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
             Booking History
           </h1>
-          <p className="text-gray-600">View all your past and upcoming trips</p>
+          <p className="text-gray-600 text-center">
+            View all your past and upcoming trips
+          </p>
         </div>
 
         {/* Empty State */}
@@ -109,7 +139,7 @@ export default function HistoryPageClient() {
                   label: "Pending",
                 },
                 cancelled: {
-                  text: "text-red-800",
+                  text: "text-red-500 ",
                   label: "Cancelled",
                 },
                 completed: {
@@ -216,17 +246,31 @@ export default function HistoryPageClient() {
                         </div>
                       </div>
                     </div>
-
-                    {/* Booked At */}
-                    <div className="pt-2 border-t border-gray-200">
-                      <p className="text-gray-500 text-xs">
-                        Booked on{" "}
-                        {format(
-                          new Date(booking.booked_at),
-                          "MMM dd, yyyy HH:mm",
+                    <div className="w-full pt-4 flex justify-between border-t border-gray-200">
+                      <div className="">
+                        <p className="text-gray-500 text-xs">
+                          Booked on{" "}
+                          {format(
+                            new Date(booking.booked_at),
+                            "MMM dd, yyyy HH:mm",
+                          )}
+                        </p>
+                      </div>
+                      {booking.booking_status === "confirmed" &&
+                        canCancel(booking.departure_at) && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              setBookingId(booking.booking_id);
+                              setOpen(true);
+                            }}
+                          >
+                            Cancel Booking
+                          </Button>
                         )}
-                      </p>
                     </div>
+                    {/* Booked At */}
                   </div>
                 </Card>
               );
@@ -266,6 +310,13 @@ export default function HistoryPageClient() {
           </div>
         )}
       </div>
+      <CancelTripDialog
+        open={open}
+        setOpen={setOpen}
+        onConfirm={() => {
+          cancelBooking(bookingId);
+        }}
+      />
     </div>
   );
 }

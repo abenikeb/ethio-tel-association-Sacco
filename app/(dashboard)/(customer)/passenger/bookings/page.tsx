@@ -3,26 +3,18 @@
 import {
   MapPin,
   Calendar,
-  Download,
   MoreVertical,
   MoreHorizontal,
-  Clock,
+  Users,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-import { useEffect, useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { formatTime, handleSearch } from "@/lib/common_functions";
+import { useState } from "react";
+import { formatTime } from "@/lib/common_functions";
 import { useSearchParams } from "next/navigation";
-import { Item, Trip, TripData } from "@/lib/model";
+import { Bus, Item, Seat, Trip, TripData } from "@/lib/model";
 import { passengerApi } from "@/app/api/api";
 import {
   DropdownMenu,
@@ -32,77 +24,69 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TripDetailsModal } from "@/components/TripDetailModal";
 import SeatBookingDialog from "@/components/SeatBookingDialog";
-import { Badge } from "@/components/ui/badge";
-import { toast, Toaster } from "sonner";
-
+import { Toaster } from "sonner";
+import { searchResult, useSearchRoute } from "@/components/Query";
 import EtDatePicker from "@/components/eth-calendar/habesha-date-picker/src/EtDatePicker";
-import { isAxiosError } from "axios";
+import SeatLayoutDialog from "@/components/SeatLayoutDialog";
+import { Spinner } from "@/components/ui/spinner";
+import { useDebounce } from "@/hooks/useDebounce";
 
-export default function BookingPage() {
+export default function DanuBooking() {
   const searchParams = useSearchParams();
   const [form, setForm] = useState({
     route_from: searchParams.get("from") || "",
     route_to: searchParams.get("to") || "",
     departure_date: searchParams.get("date") || new Date().toString(),
   });
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const per_page = 10;
   const route_from = searchParams.get("from") || "";
   const route_to = searchParams.get("to") || "";
-  const date = searchParams.get("date") || "";
+  const departure_date = searchParams.get("date") || new Date().toString();
   const [suggestionsFrom, setSuggestionsFrom] = useState([]);
+  const [seats, setSeats] = useState<Seat[]>([]);
   const [suggestionsTo, setSuggestionsTo] = useState([]);
   const [showDropdownFrom, setShowDropdownFrom] = useState(false);
   const [showDropdownTo, setShowDropdownTo] = useState(false);
-  const [data, setData] = useState<Item[]>([]);
   const [useInfoToggle, setUseInfoToggle] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<TripData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [id, setId] = useState("");
+  const [bus, setBus] = useState<
+    { id: string; plate_no: string } | undefined
+  >();
   const [tripId, setTripId] = useState<string>("");
-
-  function isTrip(item: Item): item is Trip {
-    return "trip_id" in item;
-  }
-
-  const handleViewDetails = async (trip: Trip) => {
-    const response = await passengerApi.getTripDetails(trip.trip_id);
-    console.log(response, "trip details response");
-    setSelectedTrip(response);
-    setIsModalOpen(true);
-  };
-
-  useEffect(() => {
-    handleSearch(form).then((res) => {
-      const data_ = res?.items || [];
-      setData(data_);
-    }); // for it fetch the data on load
-  }, []);
+  const debouncedTo = useDebounce(form.route_to, 300);
+  const deboundedFrom = useDebounce(form.route_from, 300);
+  const { data, isLoading, refetch } = useSearchRoute(
+    deboundedFrom,
+    debouncedTo,
+    form.departure_date,
+    currentPage,
+    per_page,
+  );
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
 
   async function handleSubmit(
     e: React.FormEvent<HTMLFormElement>,
   ): Promise<void> {
     e.preventDefault();
-
-    const res = (await handleSearch(form)) ?? {
-      departure_date: form.departure_date,
-      route_from: form.route_from,
-      items: [],
-    };
-    const data_ = res.items;
-    console.log(data_, "items");
-    setData(data_);
+    refetch();
   }
+
   const handleSelectFromCity = (city: string) => {
     setForm({ ...form, route_from: city });
     setShowDropdownFrom(false);
     setSuggestionsFrom([]);
   };
+
   const handleSelectToCity = (city: string) => {
     setForm({ ...form, route_to: city });
     setShowDropdownTo(false);
     setSuggestionsTo([]);
   };
 
-  async function handleAutoCompleteFrom(value: string) {
+  function handleAutoCompleteFrom(value: string) {
     try {
       setTimeout(async () => {
         const response = await passengerApi.autoComplete(value, "origin");
@@ -115,7 +99,8 @@ export default function BookingPage() {
       console.error("Auto complete error:", error);
     }
   }
-  async function handleAutoCompleteTo(value: string) {
+
+  function handleAutoCompleteTo(value: string) {
     try {
       setTimeout(async () => {
         const response = await passengerApi.autoComplete(value, "destination");
@@ -129,32 +114,22 @@ export default function BookingPage() {
     }
   }
 
-  async function handleBookNow(trip: Item): Promise<void> {
-    try {
-      if (isTrip(trip)) {
-        const res = await passengerApi.getTripDetails(trip.trip_id);
-        setSelectedTrip(res);
+  async function handleBookNow(trip: searchResult): Promise<void> {
+    console.log(trip);
+    const response = await passengerApi.getTripDetails(trip.id);
+    setBus(response.bus);
+    setTripId(trip.id);
+    setId(trip.operator.id);
 
-        setTripId(trip.trip_id);
-      }
-      setUseInfoToggle(true);
-    } catch (error) {
-      if (isAxiosError(error) && error.response) {
-        toast.warning(error.response.data.detail);
-        return;
-      }
-      toast.warning("Failed to fetch trip details. Please try again.");
-      console.error("Error fetching trip details:", error);
-    }
+    setUseInfoToggle(true);
   }
-
   return (
     <div className="">
       <Toaster richColors position="top-right" />
       <div className="p-8 bg-primary">
         <form onSubmit={handleSubmit}>
-          <Card className="p-6 rounded-lg shadow-xl hover:shadow-2xl max-w-xl lg:max-w-max mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <Card className="p-6 bg-white rounded-lg shadow-xl hover:shadow-2xl max-w-xl lg:max-w-max mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-2">
                   From
@@ -231,7 +206,7 @@ export default function BookingPage() {
                   Departure Date
                 </label>
                 <EtDatePicker
-                  minDate={new Date()}
+                  minDate={new Date() ?? undefined}
                   value={
                     form.departure_date
                       ? (() => {
@@ -272,13 +247,15 @@ export default function BookingPage() {
           </Card>
         </form>
       </div>
-      <div className="w-full flex justify-center mt-8 mb-8">
+      <div className="w-full hidden md:flex justify-center mt-8 mb-8">
         <Card className="hover:shadow-lg w-[70%] p-4 rounded-md border border-gray-300">
           <CardContent className="px-4 py-2 flex space-x-[40%] items-center">
             <div>
               <h2 className="text-lg font-mono mb-2.5">Departure</h2>
               <div className="text-md font-mono">{route_from}</div>
-              <div className="text-md font-mono">{formatTime(date)}</div>
+              <div className="text-md font-mono">
+                {formatTime(departure_date)}
+              </div>
             </div>
 
             <div className="flex gap-x-8 h-full">
@@ -286,7 +263,9 @@ export default function BookingPage() {
               <div>
                 <h2 className="text-lg font-mono mb-2.5">Return</h2>
                 <div className="text-md font-mono">{route_to}</div>
-                <div className="text-md font-mono">{formatTime(date)}</div>
+                <div className="text-md font-mono">
+                  {formatTime(departure_date)}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -303,173 +282,165 @@ export default function BookingPage() {
             </p>
           </div>
 
-          {data.length === 0 ? (
+          {isLoading ? (
+            <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+              <Spinner />
+            </div>
+          ) : data?.items.length === 0 ? (
             <div className="rounded-xl bg-white p-12 text-center shadow-sm">
               <p className="text-gray-500">No trips found</p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-200/50">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50">
-                    <TableHead className="px-6 py-4 text-sm font-semibold text-slate-900">
-                      Bus Operator
-                    </TableHead>
-                    {/* <TableHead className="px-6 py-4 text-sm font-semibold text-slate-900">
-                      Route
-                    </TableHead> */}
-                    <TableHead className="px-6 py-4 text-sm font-semibold text-slate-900">
-                      Departure
-                    </TableHead>
-                    <TableHead className="px-6 py-4 text-sm font-semibold text-slate-900">
-                      Arrival
-                    </TableHead>
-                    {/* <TableHead className="px-6 py-4 text-sm font-semibold text-slate-900">
-                  Duration
-                </TableHead> */}
-                    <TableHead className="px-6 py-4 text-right text-sm font-semibold text-slate-900">
-                      Fare
-                    </TableHead>
-                    <TableHead className="px-6 py-4 text-center text-sm font-semibold text-slate-900">
-                      Availability
-                    </TableHead>
-                    <TableHead className="px-6 py-4 text-center text-sm font-semibold text-slate-900">
-                      Action
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-
-                <TableBody className="divide-y divide-slate-100">
-                  {data.map((route, index) => (
-                    <TableRow
-                      key={index}
-                      className="transition-all duration-200 hover:bg-slate-50/60"
+            <div className="w-full">
+              {/* Routes Grid */}
+              <div className="grid gap-6 grid-cols-1">
+                {(data?.items || [])?.length > 0 ? (
+                  data?.items.map((route) => (
+                    <div
+                      key={route.id}
+                      className="group relative bg-card/70 backdrop-blur-sm border border-border/60 rounded-2xl p-6 
+        hover:shadow-xl hover:shadow-primary/5 hover:border-primary/40 
+        transition-all duration-300 ease-out"
                     >
-                      {/* Bus Operator */}
-                      <TableCell className="px-6 py-5">
-                        <p className="font-semibold text-slate-900">
-                          {route.operator.operator_name}
-                        </p>
-                      </TableCell>
-
-                      {/* Route */}
-                      {/* <TableCell className="px-6 py-5">
-                        <div className="flex items-center gap-2 text-slate-700">
-                          <MapPin className="h-4 w-4 text-teal-600" />
-                          <span className="text-sm">
-                            {route_from.split(" ")[0]} →{" "}
-                            {route_to.split(" ")[0]}
-                          </span>
-                        </div>
-                      </TableCell> */}
-
-                      {/* Departure */}
-                      <TableCell className="px-6 py-5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-slate-900">
-                            {formatTime(route.departure_at)}
-                          </span>
-                        </div>
-                      </TableCell>
-
-                      {/* Arrival */}
-                      <TableCell className="px-6 py-5">
-                        <span className="text-sm text-slate-700">
-                          {route_to}
-                        </span>
-                      </TableCell>
-
-                      {/* Duration */}
-                      {/* <TableCell className="px-6 py-5">
-                    <div className="flex items-center gap-2 text-slate-700">
-                      <Clock className="h-4 w-4 text-slate-400" />
-                      <span className="text-sm">{route.}</span>
-                    </div>
-                  </TableCell> */}
-
-                      {/* Fare */}
-                      <TableCell className="px-6 py-5 text-right">
-                        <span className="text-lg font-bold text-teal-600">
-                          {route.price} Birr
-                        </span>
-                      </TableCell>
-
-                      {/* Availability */}
-                      <TableCell className="px-6 py-5 text-center">
-                        <Badge
-                          variant="secondary"
-                          className={`${
-                            route.available_seats < 5
-                              ? "bg-red-100/80 text-red-800 hover:bg-red-100"
-                              : "bg-green-100/80 text-green-800 hover:bg-green-100"
-                          }`}
-                        >
-                          {route.available_seats} Available
-                        </Badge>
-                      </TableCell>
-
-                      {/* Actions */}
-                      <TableCell className="px-6 py-5">
-                        <div className="flex items-center justify-center gap-2">
-                          <Button
-                            size="sm"
-                            className="bg-teal-600 px-4 font-medium hover:bg-teal-700"
-                            onClick={() => handleBookNow(route)}
+                      {/* Top Section */}
+                      <div className="flex items-start justify-between mb-5">
+                        <div>
+                          <h3
+                            className="text-lg font-semibold tracking-tight text-foreground 
+            group-hover:text-primary transition-colors duration-300"
                           >
-                            Book
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-9 w-9 p-0 hover:bg-slate-100"
-                              >
-                                <MoreHorizontal className="h-5 w-5 text-slate-500" />
-                                <span className="sr-only">Open menu</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem
-                                className="cursor-pointer"
-                                onClick={() => {
-                                  try {
-                                    if (isTrip(route)) {
-                                      handleViewDetails(route);
-                                    }
-                                  } catch (error) {
-                                    toast.error(
-                                      "Failed to fetch trip details. Please try again.",
-                                    );
-                                    console.error(
-                                      "Error fetching trip details:",
-                                      error,
-                                    );
-                                  }
-                                }}
-                              >
-                                View Details
-                              </DropdownMenuItem>
-                              {/* <DropdownMenuItem className="cursor-pointer">
-                                Check Seat Map
-                              </DropdownMenuItem> */}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                            {route.operator.name}
+                          </h3>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="rounded-full hover:bg-muted/60"
+                            >
+                              <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem
+                            // onClick={() => handleViewDetails(route)}
+                            >
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>Check Seats</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      {/* Info Section */}
+                      <div className="grid grid-cols-3 gap-4 mb-6">
+                        {/* Price */}
+                        <div className="flex flex-col">
+                          <span className="text-xs text-muted-foreground  tracking-wide">
+                            Price
+                          </span>
+                          <span className="text-2xl font-bold text-primary">
+                            {route.price}
+                            <span className="text-sm font-medium ml-1 text-muted-foreground">
+                              Birr
+                            </span>
+                          </span>
+                        </div>
+
+                        {/* Seats */}
+                        <div className="flex flex-col items-center">
+                          <span className="text-xs text-muted-foreground tracking-wide">
+                            Departure Time
+                          </span>
+                          <div className="flex items-center justify-center mt-1 px-3 py-1 rounded-full bg-green-500/10">
+                            <span className="text-sm font-semibold text-black">
+                              {route.departure_time.split(":")[0]} :{" "}
+                              {route.departure_time.split(":")[1]}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Status */}
+                        <div className="flex flex-col items-center">
+                          <span className="text-xs text-muted-foreground  tracking-wide">
+                            Status
+                          </span>
+                          <div
+                            className="flex items-center gap-2 mt-1 px-3 py-1 rounded-full 
+            bg-green-500/10 text-green-600"
+                          >
+                            <span className="text-sm font-semibold">
+                              {route.is_available ? "Available" : "Sold Out"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CTA */}
+                      <Button
+                        onClick={() => handleBookNow(route)}
+                        className="w-full h-11 rounded-xl font-semibold 
+          bg-primary hover:bg-primary/90 
+          shadow-md hover:shadow-lg transition-all duration-300"
+                      >
+                        Book Now
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full py-16 text-center">
+                    <p className="text-muted-foreground text-sm">
+                      No routes available for your search
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
+        {(data?.total ?? 0) > 0 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * per_page + 1} to{" "}
+              {(currentPage - 1) * per_page + (data?.items.length ?? 0)} of{" "}
+              {data?.total} entries
+            </p>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                Previous
+              </Button>
+              <Button className="bg-primary text-primary-foreground">
+                {currentPage}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                disabled={(data?.total ?? 0) <= currentPage * per_page}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
+
       <div className="hidden">
-        <SeatBookingDialog
+        <SeatLayoutDialog
           toggle={useInfoToggle}
           setToggle={setUseInfoToggle}
-          tripId={tripId}
+          setSelectedSeats={setSelectedSeats}
+          seats={seats}
+          setSeats={setSeats}
+          trip_id={tripId}
+          selectedSeats={selectedSeats}
+          onSuccess={refetch}
+          operator_id={id}
         />
         <TripDetailsModal
           isOpen={isModalOpen}

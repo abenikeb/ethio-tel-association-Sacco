@@ -1,5 +1,6 @@
 // "use server";
 
+import { UpdateAgentDto } from "@/components/UpdateAgentForm";
 import {
   deleteAllCookies,
   getAccessToken,
@@ -7,6 +8,7 @@ import {
   getRefreshToken,
   getSessionId,
 } from "@/lib/auth";
+import { getClientToken } from "@/lib/common_functions";
 import {
   AddOperatorForm,
   AddUserForm,
@@ -51,97 +53,89 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const originalRequest = error.config;
-
+    const publicPath = ["/login", "/signup", "/verify"];
+    console.log(window.location.href);
     if (error.response) {
       const status = error.response.status;
       const data = error.response.data;
       const code = data.code;
       const detail = data.detail;
-      if (data.error && data.error.includes("role")) {
-        window.location.href = "/unauthorized";
-      }
-      console.log(detail, "error detail from response interceptor");
-      if (detail && detail?.includes("revoked")) {
-        deleteAllCookies().then(() => {
-          console.error("Session revoked — clearing cookies and redirecting");
-          window.location.href = "/login";
-        });
-      }
-      if (status === 401) {
-        switch (detail) {
-          case "CSRF_MISSING":
-          case "CSRF_INVALID":
-            // Retry once if not already retried
-            if (!originalRequest._retry) {
-              originalRequest._retry = true;
-              return api(originalRequest);
-            }
-            // If retry fails, force re-login
-            console.error(`${code}: Forcing re-login`);
+      const path = window.location.href;
+
+      if (!publicPath.includes(path)) {
+        console.log(detail, "error detail from response interceptor");
+        if (detail && detail?.includes("revoked")) {
+          deleteAllCookies().then(() => {
+            console.error("Session revoked — clearing cookies and redirecting");
             window.location.href = "/login";
-            break;
-
-          case "CSRF_EXPIRED":
-            console.error("CSRF Token expired");
-            window.location.href = "/login";
-            break;
-
-          case "REFRESH_REUSED":
-            console.error("Refresh token reuse detected — security warning");
-            // Optionally show an alert to the user
-            alert(
-              "Security alert: Your session was used from another location. Please log in again.",
-            );
-            window.location.href = "/login";
-            break;
-
-          case "REFRESH_EXPIRED":
-            console.error("Refresh token expired");
-            window.location.href = "/login";
-            break;
-
-          case "REFRESH_INVALID":
-            console.error("Refresh token invalid");
-            window.location.href = "/login";
-            break;
-          case "Not authenticated":
-            console.error("Not authenticated — redirecting to login");
-            console.log(window.location.pathname);
-            window.location.href = "/login";
-
-            /**
-             * Note to fur
-             */
-
-            break;
-
-          case "SESSION_INVALID":
-            console.error("Session invalid — clearing UI state");
-            // Clear session from UI/local storage
-            localStorage.removeItem("session");
-            sessionStorage.clear();
-            window.location.href = "/login";
-            break;
-
-          case "USER_NOT_FOUND":
-            console.error("User not found — clearing auth state");
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.href = "/login";
-            break;
-
-          default:
-            console.error("Unhandled 401 error:", data);
-            throw error;
+          });
         }
-      } else if (status === 403) {
-        console.log(error);
-        throw error;
-      }
-    } else {
-      console.error("Network or unknown error:", error.message);
-    }
+        if (status === 401) {
+          switch (detail) {
+            case "CSRF_MISSING":
+            case "CSRF_INVALID":
+              // Retry once if not already retried
+              if (!originalRequest._retry) {
+                originalRequest._retry = true;
+                return api(originalRequest);
+              }
+              // If retry fails, force re-login
+              console.error(`${code}: Forcing re-login`);
+              window.location.href = "/login";
+              break;
 
+            case "CSRF_EXPIRED":
+              console.error("CSRF Token expired");
+              window.location.href = "/login";
+              break;
+
+            case "REFRESH_REUSED":
+              console.error("Refresh token reuse detected — security warning");
+              // Optionally show an alert to the user
+              alert(
+                "Security alert: Your session was used from another location. Please log in again.",
+              );
+              window.location.href = "/login";
+              break;
+
+            case "REFRESH_EXPIRED":
+              console.error("Refresh token expired");
+              window.location.href = "/login";
+              break;
+
+            case "REFRESH_INVALID":
+              console.error("Refresh token invalid");
+              window.location.href = "/login";
+              break;
+
+            case "SESSION_INVALID":
+              console.error("Session invalid — clearing UI state");
+              // Clear session from UI/local storage
+              localStorage.removeItem("session");
+              sessionStorage.clear();
+              window.location.href = "/login";
+              break;
+
+            case "USER_NOT_FOUND":
+              console.error("User not found — clearing auth state");
+              localStorage.clear();
+              sessionStorage.clear();
+              window.location.href = "/login";
+              break;
+
+            default:
+              console.error("Unhandled 401 error:", data);
+              window.location.href = "/login";
+              throw error;
+          }
+        } else if (status === 403) {
+          console.log(error);
+          throw error;
+        }
+      } else {
+        console.error("Network or unknown error:", error.message);
+      }
+    }
     return Promise.reject(error);
   },
 );
@@ -267,9 +261,15 @@ export const authAPI = {
     phone: string;
     password: string; // need attention
   }) => {
-    console.log(body, "signup body");
-    const response = await api.post("/auth/register", body);
-    return response.data;
+    try {
+      const response = await api.post("/auth/register", body);
+      console.log(response);
+
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
   },
   login: async (
     identifier: string,
@@ -289,6 +289,27 @@ export const authAPI = {
     } catch (error) {
       console.log(error);
       throw error;
+    }
+  },
+  verifyEmail: async (token: string) => {
+    try {
+      const response = await api.post(`/auth/verify-email/${token}`);
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+
+  resendEmailVerification: async (email: string) => {
+    try {
+      const response = await api.post(`/auth/resend-email-verification`, {
+        email,
+      });
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
     }
   },
   refresh: async () => {
@@ -329,6 +350,8 @@ export const authAPI = {
     } catch (error) {
       await deleteAllCookies();
       console.log(error);
+    } finally {
+      window.location.replace("/login");
     }
   },
   whoAmI: async () => {
@@ -355,11 +378,23 @@ export const sessionMgmt = {
     return response.data;
   },
   revokeAllSession: async () => {
-    const response = await api.post(`/user/me/sessions/revoke-all`);
+    const csrf_token = await getCSRFToken();
+    console.log(csrf_token);
+    const response = await api.post(`/user/me/sessions/revoke-all`, {
+      // headers: {
+      //   "x-csrf-token": csrf_token,
+      // },
+    });
     return response.data;
   },
   revokeOtherSession: async () => {
-    const response = await api.post("/user/me/sessions/revoke-others");
+    const csrf_token = await getCSRFToken();
+    console.log(csrf_token);
+    const response = await api.post("/user/me/sessions/revoke-others", {
+      headers: {
+        "x-csrf-token": csrf_token,
+      },
+    });
     return response.data;
   },
 };
@@ -381,6 +416,7 @@ export const superAdminApi = {
     });
     return response.data;
   },
+
   viewOperatorDetail: async (id: string) => {
     const response = await api.get(`/admin/operators/${id}`);
     return response.data;
@@ -399,6 +435,106 @@ export const superAdminApi = {
       throw error;
     }
   },
+
+  /***
+   * Dashboard
+   */
+  getStats: async () => {
+    const response = await api.get(`/admin/dashboard/dashboard`);
+    return response.data as {
+      total_trips: number;
+      trips_today: number;
+      total_bookings: number;
+      bookings_today: number;
+      total_amount: number;
+      amount_today: number;
+      total_passengers: number;
+      passengers_today: number;
+      total_operators: number;
+      operators_today: number;
+    };
+  },
+
+  /**
+   *
+   *  Lottery
+   */
+  /**
+   * Superadmin lotter handles
+   */
+  getLotteryList: async (
+    page?: number,
+    page_number?: number,
+    from_date?: Date,
+    to_date?: Date,
+  ) => {
+    try {
+      const response = await api.get(`/admin/lottery/numbers`, {
+        params: {
+          page,
+          page_number,
+          from_date,
+          to_date,
+        },
+      });
+
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  exportLotteryNumbers: async (from_date?: Date, to_date?: Date) => {
+    const response = await api.get(`/admin/lottery/numbers/export`, {
+      params: {
+        from_date,
+        to_date,
+      },
+    });
+    console.log("response", response.data);
+    return response.data;
+  },
+
+  drawLottery: async (from_date?: string, to_date?: string) => {
+    const response = await api.get(`/admin/lottery/random-ticket`, {
+      params: {
+        from_date,
+        to_date,
+      },
+    });
+    return response.data as {
+      lottery_number: string;
+      ticket_id: string;
+      ticket: {
+        ticket_id: string;
+        status: string;
+        created_at: string;
+      };
+      passenger: {
+        name: string;
+        email: string;
+        phone: string;
+      };
+      trip: {
+        trip_id: string;
+        route_from: string;
+        route_to: string;
+        departure_date: string;
+        departure_time: string;
+      };
+      operator: {
+        operator_id: string;
+        operator_name: string;
+      };
+      booking: {
+        booking_id: string;
+        booking_reference: string;
+        booking_date: string;
+        booked_by: string | null;
+      };
+    };
+  },
+
   /**
    * This is the user operation below
    */
@@ -470,6 +606,61 @@ export const superAdminApi = {
   enableUser: async (id: string) => {
     const response = await api.post(`/admin/users/${id}/enable`);
     return response.data;
+  },
+  addRoute: async (body: {
+    route_from: string;
+    route_to: string;
+    distance_km: number;
+    estimated_duration_minutes: number;
+  }) => {
+    try {
+      const response = await api.post(`/admin/routes/`, body);
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  listRoutes: async (page?: number, per_page?: number) => {
+    try {
+      const response = await api.get("/admin/routes", {
+        params: {
+          page,
+          per_page,
+        },
+      });
+      console.log(response.data, "here");
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  getRouteDetail: async (route_id: string) => {
+    try {
+      const response = await api.get(`/admin/routes/${route_id}`);
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  updateRoute: async (
+    route_id: string,
+    body: {
+      route_from?: string;
+      route_to?: string;
+      distance_km?: number;
+      estimated_duration_minutes?: number;
+    },
+  ) => {
+    try {
+      const response = await api.patch(`/admin/routes/${route_id}`, body);
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
   },
   /**
    * This is the Agent operation below
@@ -613,6 +804,22 @@ export const superAdminApi = {
     return response.data;
   },
 };
+export const DanuAgentApi = {
+  getRefundList: async (agent_id: string, page?: number, per_page?: number) => {
+    try {
+      const response = await api.get(`/agent/${agent_id}/reports/refunds`, {
+        params: {
+          page,
+          per_page,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+};
 
 export const passengerApi = {
   getBookingHistory: async (page?: number, per_page?: number) => {
@@ -629,6 +836,17 @@ export const passengerApi = {
       throw error;
     }
   },
+
+  cancelBooking: async (booking_id: string) => {
+    try {
+      const response = await api.delete(`/user/bookings/${booking_id}`);
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+
   confirmBooking: async (
     hold_id: string,
     payment_reference: string,
@@ -650,16 +868,94 @@ export const passengerApi = {
     route_from: string;
     route_to: string;
     departure_date: string;
+    page?: number;
+    per_page?: number;
   }) => {
-    const response = await api.get("/guest/search", {
-      params: {
-        route_from: body.route_from,
-        route_to: body.route_to,
-        departure_date: body.departure_date,
-      },
-    });
-    console.log(response.data);
-    return response.data;
+    console.log(body, "body to search");
+    try {
+      const response = await api.get("/guest/routes/search", {
+        params: {
+          from_city: body.route_from,
+          to_city: body.route_to,
+          departure_date: body.departure_date,
+          page: body.page,
+          per_page: body.per_page,
+        },
+      });
+      console.log(response.data);
+
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  getSeatLayout: async (trip_id: string) => {
+    const response = await api.get(`/guest/routes/${trip_id}/seats`);
+
+    return response.data as {
+      seats: {
+        id: string;
+        seat_code: string;
+        status: "available" | "booked" | "held";
+        row: number;
+        col: number;
+        fare: number;
+      }[];
+    };
+  },
+  guestHoldBooking: async (
+    tripId: string,
+    body: {
+      seat_codes: string[];
+      passenger_details: Passenger[];
+      client_ref: string;
+    },
+  ) => {
+    try {
+      // const uuid = crypto.randomUUID();
+      // console.log({ ...body, client_ref: `client_${uuid}` }, "body here");
+      const response = await api.post(`/guest/holds/${tripId}`, {
+        ...body,
+        passenger_details: body.passenger_details.map((passenger) => ({
+          ...passenger,
+          name: passenger.phone.trim(),
+        })),
+        // client_ref: uuid,
+      });
+
+      getClientToken(response.data.client_ref_token);
+      return response.data;
+    } catch (error) {
+      console.log(error, "error from hold seat");
+      throw error;
+    }
+  },
+  guestConfirmBooking: async (
+    hold_id: string,
+    payment_reference: string,
+    payment_method: string,
+  ) => {
+    try {
+      const response = await api.post(
+        `/guest/holds/${hold_id}/confirm`,
+        {
+          payment_reference,
+          payment_method,
+        },
+        {
+          headers: {
+            "X-Client-Token": getClientToken(),
+          },
+        },
+      );
+      console.log(response.data, "guest confirm here it is");
+
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   },
 
   autoComplete: async (
@@ -683,9 +979,37 @@ export const passengerApi = {
     return response.data.routes;
   },
   getTripDetails: async (tripId: string) => {
-    const response = await api.get(`/guest/${tripId}`);
+    const response = await api.get(`/guest/route/${tripId}`);
 
-    return response.data;
+    return response.data as {
+      id: string;
+      trip_date: string;
+      departure_time: string;
+
+      route: {
+        id: string;
+        from_city: string;
+        to_city: string;
+      };
+
+      operator: {
+        id: string;
+        name: string;
+      };
+
+      bus: {
+        id: string;
+        plate_no: string;
+      };
+
+      driver: {
+        id: string;
+        name: string;
+      };
+
+      price: number;
+      is_available: boolean;
+    };
   },
   holdSeat: async (
     tripId: string,
@@ -719,6 +1043,27 @@ export const agentApi = {
     const response = await api.get(`/agent/${agent_id}/kyc-documents`);
     return response.data;
   },
+  getRefundList: async (
+    organzation_id: string,
+    page?: number,
+    per_page?: number,
+  ) => {
+    try {
+      const response = await api.get(
+        `/operator-agents/${organzation_id}/reports/refunds`,
+        {
+          params: {
+            page,
+            per_page,
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
   handleBooking: async (
     agent_id: string,
 
@@ -739,8 +1084,125 @@ export const agentApi = {
       throw error;
     }
   },
+  getReportData: async (
+    operator_id: string,
+    from_date: string,
+    to_date: string,
+    page?: number,
+    per_page?: number,
+  ) => {
+    try {
+      const response = await api.get(
+        `/operator-agents/${operator_id}/reports/tickets`,
+        {
+          params: {
+            from_date,
+            to_date,
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
 };
+
 export const operatorApi = {
+  getReportData: async (
+    operator_id: string,
+    start_date?: string,
+    end_date?: string,
+    bus_plate?: string,
+    route_id?: string,
+    agent_id?: string,
+    page?: number,
+    per_page?: number,
+  ) => {
+    try {
+      const res = await api.get(`/operator/${operator_id}/reports/tickets`, {
+        params: {
+          start_date,
+          end_date,
+          agent_id,
+          bus_plate,
+          route_id,
+          page,
+          per_page,
+        },
+      });
+      return res.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  getReportStatCard: async (operator_id: string) => {
+    try {
+      const response = await api.get(
+        `/operator/${operator_id}/reports/summary`,
+      );
+
+      return response.data as {
+        operator_id: string;
+        operator_name: string;
+        date: string;
+        today_revenue: number;
+        tickets_sold_today: number;
+        total_tickets_by_agents: number;
+      };
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  createSchedule: async (
+    operator_id: string,
+    body: {
+      route_id: string;
+      bus_id: string;
+      driver_id: string;
+      departure_time: string;
+      price: number;
+      freq: string;
+      interval: number;
+      byweekday: string;
+      bymonthday: string;
+      bymonth: string;
+      until: string;
+      count: number;
+      wkst: number;
+      start_date: string;
+      end_date: string;
+    },
+  ) => {
+    try {
+      await api.post(`/operator/${operator_id}/schedules`, body);
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  getDetailSchedule: async (
+    operator_id: string,
+    route_from: string,
+    route_to: string,
+  ) => {
+    const res = await api.get(`/operator/${operator_id}/routes`, {
+      params: {
+        route_to,
+        route_from,
+      },
+    });
+    return res.data as {
+      id: string;
+      route_from: string;
+      route_to: string;
+      distance_km: number;
+      estimated_duration_minutes: number;
+    };
+  },
   createBus: async (
     body: {
       plate_no: string;
@@ -750,7 +1212,6 @@ export const operatorApi = {
     },
     operator_id: string,
   ) => {
-    console.log("data to send", operator_id, body);
     try {
       const response = await api.post(`/operator/${operator_id}/buses`, body);
       return response.data;
@@ -758,7 +1219,114 @@ export const operatorApi = {
       throw error;
     }
   },
-  getOperatorAgent: async (
+  getReport: async (
+    operator_id: string,
+    page: number,
+    per_page: number,
+    from_date?: string,
+    to_date?: string,
+  ) => {
+    try {
+      const response = await api.get(
+        `/operator/${operator_id}/reports/revenue`,
+        {
+          params: {
+            page,
+            per_page,
+            from_date,
+            to_date,
+          },
+        },
+      );
+      console.log(response.data, "data");
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+
+  getRefundList: async (
+    operator_id: string,
+    page?: number,
+    per_page?: number,
+    from_date?: string,
+    to_date?: string,
+  ) => {
+    try {
+      const response = await api.get(`/operator/${operator_id}/refunds`, {
+        params: {
+          page,
+          per_page,
+          from_date,
+          to_date,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.log(error, "error from getRefundList func");
+      throw error;
+    }
+  },
+  updateAgentInfo: async (
+    operator_id: string,
+    agent_id: string,
+    body: UpdateAgentDto,
+  ) => {
+    try {
+      const response = await api.patch(
+        `/operator/${operator_id}/agents/${agent_id}`,
+        body,
+      );
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  getRefundDetail: async (operator_id: string, refund_id: string) => {
+    try {
+      const response = await api.get(
+        `/operator/${operator_id}/refunds/${refund_id}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.log(error, "error from getRefundDetail func");
+      throw error;
+    }
+  },
+  processRefund: async (
+    operator_id: string,
+    refund_id: string,
+    {
+      status,
+      processed_amount,
+      method,
+      notes,
+    }: {
+      status: string;
+      processed_amount?: number;
+      method?: string;
+      notes?: string;
+    },
+  ) => {
+    try {
+      const response = await api.patch(
+        `/operator/${operator_id}/refunds/${refund_id}`,
+        {
+          status,
+          processed_amount,
+          method,
+          notes,
+        },
+      );
+      return response.data;
+    } catch (error) {
+      console.log(error, "error from approveRefund func");
+      throw error;
+    }
+  },
+  getOperatorAgents: async (
     page?: number,
     per_page?: number,
     operator_id?: string,
@@ -769,6 +1337,12 @@ export const operatorApi = {
         per_page,
       },
     });
+    return response.data;
+  },
+  getOperatorAgentDetail: async (operator_id: string, agent_id: string) => {
+    const response = await api.get(
+      `/operator/${operator_id}/agents/${agent_id}`,
+    );
     return response.data;
   },
 
@@ -877,9 +1451,15 @@ export const operatorApi = {
     );
     return response.data;
   },
-  getAllTrips: async (operator_id: string, limit: number) => {
-    const response = await api.get(`/operator/${operator_id}/trips`, {
-      params: { limit },
+
+  getAllSchedules: async () => {},
+  getAllTrips: async (
+    operator_id: string,
+    page?: number,
+    per_page?: number,
+  ) => {
+    const response = await api.get(`/operator/${operator_id}/schedules`, {
+      params: { page, per_page },
     });
     return response.data;
   },
@@ -888,13 +1468,14 @@ export const operatorApi = {
     return response.data;
   },
   getAllSeatTemplates: async (operator_id: string) => {
+    console.log(operator_id);
     try {
-      console.log(operator_id, "operator id here");
       const response = await api.get(`/operator/${operator_id}/seat-templates`);
       console.log(response.data.items, "seat templates response");
       return response.data.items;
     } catch (error) {
       console.log(error, "error from get all seat templates");
+      throw error;
     }
   },
   /**This is the KYC apis */

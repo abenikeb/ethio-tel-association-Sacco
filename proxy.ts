@@ -14,11 +14,15 @@ export function proxy(request: NextRequest) {
   const isNextInternal = pathname.startsWith("/_next");
 
   const public_paths = [
+    "/",
     "/login",
     "/signup",
     "/guest",
+    "/preference",
     "/unauthorized",
+    "/verify-email",
     "/_next",
+    "/forgot-password",
     "/favicon.ico",
     "/api",
   ];
@@ -28,7 +32,6 @@ export function proxy(request: NextRequest) {
   const userRole = decoded?.roles?.[0];
 
   if (isAuthPage) {
-    console.log(token, "token from proxy");
     if (userRole) {
       if (userRole === "super_admin")
         return NextResponse.redirect(new URL("/superadmin", request.url));
@@ -36,6 +39,14 @@ export function proxy(request: NextRequest) {
         return NextResponse.redirect(new URL("/operator", request.url));
       if (userRole === "passenger")
         return NextResponse.redirect(new URL("/passenger", request.url));
+      if (userRole === "agent" && decoded.agent_type == "operator-agent-admin")
+        return NextResponse.redirect(
+          new URL("/operator-agent/ticket-booking", request.url),
+        );
+      if (userRole === "agent" && decoded.agent_type == "agent-admin")
+        return NextResponse.redirect(
+          new URL("/agent/ticket-booking", request.url),
+        );
     }
     return NextResponse.next();
   }
@@ -49,17 +60,33 @@ export function proxy(request: NextRequest) {
       return NextResponse.next();
     }
 
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/guest", request.url));
   }
 
   if (pathname.startsWith("/superadmin") && userRole !== "super_admin") {
     return NextResponse.redirect(new URL("/unauthorized", request.url));
   }
-
-  if (pathname.startsWith("/operator") && userRole !== "operator_admin") {
+  if (pathname.startsWith("/operator-agent") && userRole !== "agent_admin") {
     return NextResponse.redirect(new URL("/unauthorized", request.url));
   }
-  if (pathname.startsWith("/agent") && userRole !== "agent_admin") {
+  if (
+    pathname.startsWith("/agent") &&
+    userRole !== "agent_admin" &&
+    decoded.agent_type !== "agent-admin"
+  ) {
+    return NextResponse.redirect(new URL("/unauthorized", request.url));
+  }
+  if (
+    pathname.startsWith("/operator-agent") &&
+    userRole !== "agent_admin" &&
+    decoded.agent_type !== "operator-agent-admin"
+  ) {
+    return NextResponse.redirect(new URL("/unauthorized", request.url));
+  }
+  if (pathname.startsWith("/operator/") && userRole !== "operator_admin") {
+    return NextResponse.redirect(new URL("/unauthorized", request.url));
+  }
+  if (pathname == "/operator/" && userRole !== "operator_admin") {
     return NextResponse.redirect(new URL("/unauthorized", request.url));
   }
 

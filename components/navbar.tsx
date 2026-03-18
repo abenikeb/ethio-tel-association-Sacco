@@ -7,33 +7,40 @@ import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
 import AvatarHero from "./HeroAvatar";
 import { authAPI } from "@/app/api/api";
+import clsx from "clsx";
+
 interface NavbarProps {
   initalPath: { href: string; label: string }[];
   onLoaded: () => void;
 }
-export default function Navbar(Props: NavbarProps) {
+
+export default function Navbar(props: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user } = useAuth();
+
   useEffect(() => {
     if (user) {
-      Props.onLoaded();
+      props.onLoaded();
     }
-  }, [user, Props.onLoaded]);
-  if (!user) return <></>;
+  }, [user, props.onLoaded]);
+
+  if (!user) return null;
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
+          {/* Logo */}
           <div className="relative flex-shrink-0">
             <span className="text-2xl font-bold text-primary ml-0 mr-15">
               <Link href="/passenger">DANU BOOKING</Link>
             </span>
           </div>
 
+          {/* Desktop Menu */}
           <div className="ml-5 w-full hidden md:block">
             <div className="w-full flex justify-between items-center space-x-8">
-              {Props.initalPath.map((path) => (
+              {props.initalPath.map((path) => (
                 <Link
                   key={path.href}
                   href={path.href}
@@ -44,12 +51,10 @@ export default function Navbar(Props: NavbarProps) {
               ))}
               <AvatarHero />
 
-              {!user ? (
+              {!user && (
                 <Button className="bg-primary cursor-pointer hover:bg-teal-700 text-white font-semibold px-6 py-2 rounded transition-colors">
-                  <Link href={"/login"}> Log In </Link>
+                  <Link href="/login">Log In</Link>
                 </Button>
-              ) : (
-                <></>
               )}
             </div>
           </div>
@@ -58,13 +63,25 @@ export default function Navbar(Props: NavbarProps) {
           <div className="md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-700 hover:text-primary"
+              className="relative w-6 h-6 text-gray-700 hover:text-primary"
             >
-              {isMenuOpen ? (
-                <X className="w-6 h-6 cursor-pointer" />
-              ) : (
-                <Menu className="w-6 h-6 cursor-pointer" />
-              )}
+              <Menu
+                className={clsx(
+                  "absolute cursor-pointer inset-0 transition-all duration-300",
+                  isMenuOpen
+                    ? "opacity-0 rotate-90 scale-75"
+                    : "opacity-100 rotate-0 scale-100",
+                )}
+              />
+
+              <X
+                className={clsx(
+                  "absolute inset-0 cursor-pointer transition-all duration-300",
+                  isMenuOpen
+                    ? "opacity-100 rotate-0 scale-100"
+                    : "opacity-0 -rotate-90 scale-75",
+                )}
+              />
             </button>
           </div>
         </div>
@@ -78,12 +95,6 @@ export default function Navbar(Props: NavbarProps) {
             >
               Home
             </Link>
-            {/* <Link
-              href="/bookings"
-              className="block text-center px-3 py-2 text-gray-700 hover:text-teal-600 font-medium transition-colors"
-            >
-              Bookings
-            </Link> */}
             <Link
               href="/about-us"
               className="block text-center px-3 py-2 text-gray-700 hover:text-teal-600 font-medium transition-colors"
@@ -97,34 +108,31 @@ export default function Navbar(Props: NavbarProps) {
               Contact
             </Link>
 
-            {!user ? (
-              <div className="px-3 w-full py-2 flex justify-center gap-2">
-                <Button
-                  variant="default"
-                  className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded transition-colors text-sm"
-                >
-                  Sign In
-                </Button>
-                <Button
-                  variant="default"
-                  className="flex-1 bg-coral-500 hover:bg-coral-600 text-white font-semibold px-4 py-2 rounded transition-colors text-sm"
-                >
-                  Sign Up
-                </Button>
-              </div>
-            ) : (
-              <div className="px-3 mt-2 w-full py-2 flex justify-center gap-2">
-                <Button
-                  variant="destructive"
-                  className="cursor-pointer"
-                  onClick={async () => {
-                    authAPI.logout();
-                  }}
-                >
-                  Logout
-                </Button>
-              </div>
-            )}
+            <Link
+              href="/history"
+              className="block text-center px-3 py-2 text-gray-700 hover:text-teal-600 font-medium transition-colors"
+            >
+              Booking History
+            </Link>
+            <Link
+              href="/manage-sessions"
+              className="block text-center px-3 py-2 text-gray-700 hover:text-teal-600 font-medium transition-colors"
+            >
+              Manage Session
+            </Link>
+
+            {/* Logout Button */}
+            <div className="px-3 mt-2 w-full py-2 flex justify-center gap-2">
+              <Button
+                variant="destructive"
+                className="cursor-pointer"
+                onClick={async () => {
+                  await authAPI.logout();
+                }}
+              >
+                Logout
+              </Button>
+            </div>
           </div>
         )}
       </div>
