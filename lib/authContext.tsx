@@ -35,9 +35,23 @@ export const AuthProvider = ({
 }) => {
   const path = usePathname();
   const [user, setUser] = useState<UseAuthUser | null>(null);
+  const public_paths = [
+    "/",
+    "/login",
+    "/signup",
+    "/guest",
+    "/preference",
+    "/unauthorized",
+    "/verify-email",
+    "/_next",
+    "/forgot-password",
+    "/favicon.ico",
+    "/api",
+    "/tickets",
+  ];
 
   useEffect(() => {
-    if (!(path == "/login")) {
+    if (!public_paths.includes(path)) {
       const fetchCurrUser = async () => {
         const response = (await authAPI.whoAmI()) as UseAuthUser;
         const hasBlacklistedRole = response.roles.some((role) =>
@@ -65,7 +79,7 @@ export const AuthProvider = ({
 
       setUser(response.user_info);
 
-      if (response) {
+      if (response.access_token.length > 0) {
         await setAuthCookies(response);
         const decoded = await decodeJWT(response.access_token);
         console.log(response.access_token);
@@ -75,13 +89,22 @@ export const AuthProvider = ({
         } else if (decoded.roles.includes("super_admin")) {
           window.location.replace("/superadmin");
         } else if (decoded.roles.includes("agent_admin")) {
+          if (!response.user_info?.organization_id) {
+            throw Error(
+              "You are not assigned to an agent. Please Contact An Admin",
+            );
+          }
           if (response.user_info.agent_type == "operator-agent-admin") {
             window.location.replace("/operator-agent/ticket-booking");
           } else {
             window.location.replace("/agent/ticket-booking");
           }
-          console.log(response, "here is the response");
         } else if (decoded.roles.includes("operator_admin")) {
+          if (!response.user_info?.organization_id) {
+            throw Error(
+              "You are not assigned to an agent. Please Contact An Admin",
+            );
+          }
           window.location.replace("/operator");
         } else {
           console.log("No role matched");
@@ -97,7 +120,6 @@ export const AuthProvider = ({
     }
   };
 
-  // ✅ FIXED: Memoize context value to prevent unnecessary re-renders
   const value = useMemo(() => ({ user, setUser, login }), [user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

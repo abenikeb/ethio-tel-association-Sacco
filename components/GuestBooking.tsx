@@ -13,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 import { useState } from "react";
 import { formatTime } from "@/lib/common_functions";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Bus, Item, Seat, Trip, TripData } from "@/lib/model";
 import { passengerApi } from "@/app/api/api";
 import {
@@ -66,12 +66,9 @@ export default function GuestBooking() {
     per_page,
     undefined,
   );
-  console.log(data, "logged");
-  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const router = useRouter();
 
-  function isTrip(item: Item): item is Trip {
-    return "trip_id" in item;
-  }
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
 
   // const handleViewDetails = async (trip: searchResult) => {
   //   const response = await passengerApi.getTripDetails(trip.id);
@@ -85,7 +82,9 @@ export default function GuestBooking() {
   ): Promise<void> {
     e.preventDefault();
     // Refetch data with updated form values
-    refetch();
+    router.replace(
+      `/guest/bookings?from=${form.route_from}&to=${form.route_to}&date=${form.departure_date}`,
+    );
   }
 
   const handleSelectFromCity = (city: string) => {
@@ -347,35 +346,8 @@ export default function GuestBooking() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-
-                      {/* <div className="flex items-center justify-between mb-6">
-                        <div className="flex flex-col">
-                          <span className="text-xs  tracking-wider text-muted-foreground">
-                            From
-                          </span>
-                          <span className="text-base font-semibold">
-                            {form.route_from}
-                          </span>
-                        </div>
-
-                        <div className="flex-1 mx-4 border-t border-dashed border-border relative">
-                          <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-card px-2 text-xs text-muted-foreground">
-                            → Direct
-                          </span>
-                        </div>
-
-                        <div className="flex flex-col text-right">
-                          <span className="text-xs  tracking-wider text-muted-foreground">
-                            To
-                          </span>
-                          <span className="text-base font-semibold">
-                            {form.route_to}
-                          </span>
-                        </div>
-                      </div> */}
-
                       {/* Info Section */}
-                      <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="grid grid-cols-2 place-items-center md:grid-cols-3 gap-4 mb-6">
                         {/* Price */}
                         <div className="flex flex-col">
                           <span className="text-xs text-muted-foreground  tracking-wide">
@@ -403,8 +375,8 @@ export default function GuestBooking() {
                         </div>
 
                         {/* Status */}
-                        <div className="flex flex-col items-center">
-                          <span className="text-xs text-muted-foreground  tracking-wide">
+                        <div className=" grid col-span-2 md:col-span-1 md:flex flex-col items-center">
+                          <span className="text-xs text-center text-muted-foreground  tracking-wide">
                             Status
                           </span>
                           <div

@@ -22,6 +22,7 @@ import { Bus, Driver, RouteDTO, Trip } from "@/lib/model";
 import { operatorApi } from "@/app/api/api";
 import { useAuth } from "@/lib/authContext";
 import { toast } from "sonner";
+import { isAxiosError } from "axios";
 
 type FormValues = {
   route_id: string;
@@ -63,6 +64,7 @@ export function ScheduleDialog({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { isSubmitting, isValid, errors },
   } = useForm<FormValues>({
     mode: "onChange",
@@ -71,13 +73,41 @@ export function ScheduleDialog({
       bus_id: "",
       driver_id: "",
       freq: "",
+      interval: 0,
+      count: 0,
+      wkst: 0,
+      start_date: "",
+      end_date: "",
     },
   });
+  console.log(errors, isValid);
 
   const { user } = useAuth();
   const onSubmit = async (data: FormValues) => {
     try {
-      await operatorApi.createSchedule(user?.organization_id ?? "", data);
+      const effectiveEndDate = data.end_date || data.until;
+      const startDate = new Date(data.start_date);
+      const endDate = effectiveEndDate ? new Date(effectiveEndDate) : null;
+
+      if (endDate) {
+        const diffInDays =
+          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+
+        if (diffInDays > 90) {
+          toast.error("Schedule cannot span more than 90 days.");
+          return; // stop submission
+        }
+      }
+      const payload = {
+        ...data,
+        until: data.until ? data.until : undefined,
+        price: Number(data.price),
+        end_date: data.end_date ? data.end_date : undefined,
+        interval: data.interval ? data.interval : 1,
+        wkst: Number(data.wkst),
+      };
+
+      await operatorApi.createSchedule(user?.organization_id ?? "", payload);
       onSuccess?.();
 
       toast.success("Schedule created successfully");
@@ -87,24 +117,35 @@ export function ScheduleDialog({
       reset();
     } catch (error) {
       console.error(error);
+      if (isAxiosError(error)) {
+        if (typeof error.response?.data.error === "string") {
+          toast.error(error.response.data.error);
+          return;
+        }
+      }
       toast.error("Failed to create schedule");
     }
   };
+  const freq = watch("freq");
+  const until = watch("until");
+  const end_date = watch("end_date");
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-scroll scrollbar-hide">
+      <DialogContent className="w-full max-w-lg md:max-w-3xl max-h-[90vh] overflow-y-auto">
+        {" "}
         <DialogHeader>
           <DialogTitle>Create Bus Schedule</DialogTitle>
         </DialogHeader>
-
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="grid grid-cols-2 gap-4"
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 w-full"
         >
-          {/* Route Dropdown */}
-          <div className="flex flex-col gap-2">
-            <Label>Route</Label>
+          {" "}
+          <div className="w-full flex flex-col gap-2">
+            <Label>
+              Route <span className="text-red-500">*</span>
+            </Label>
             <Controller
               name="route_id"
               defaultValue=""
@@ -132,10 +173,11 @@ export function ScheduleDialog({
               )}
             />
           </div>
-
           {/* Bus Dropdown */}
           <div className="flex flex-col gap-2">
-            <Label>Bus</Label>
+            <Label>
+              Bus <span className="text-red-500">*</span>
+            </Label>
             <Controller
               name="bus_id"
               defaultValue=""
@@ -163,10 +205,11 @@ export function ScheduleDialog({
               )}
             />
           </div>
-
           {/* Driver Dropdown */}
           <div className="flex flex-col gap-2">
-            <Label>Driver</Label>
+            <Label>
+              Driver <span className="text-red-500">*</span>
+            </Label>
             <Controller
               name="driver_id"
               defaultValue=""
@@ -194,10 +237,12 @@ export function ScheduleDialog({
               )}
             />
           </div>
-
           {/* The rest of your inputs */}
           <div className="flex flex-col gap-2">
-            <Label>Departure Time</Label>
+            <Label>
+              {" "}
+              Departure Time <span className="text-red-500">*</span>
+            </Label>
             <Input
               required
               className="text-emerald-600"
@@ -205,14 +250,22 @@ export function ScheduleDialog({
               {...register("departure_time")}
             />
           </div>
-
           <div className="flex flex-col gap-2">
-            <Label>Price</Label>
-            <Input required type="number" {...register("price")} />
+            <Label>
+              Price <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              required
+              min={100}
+              type="number"
+              {...register("price", { valueAsNumber: true })}
+            />
           </div>
-
           <div className="flex flex-col gap-2">
-            <Label>Frequency</Label>
+            <Label>
+              {" "}
+              Frequency<span className="text-red-500">*</span>{" "}
+            </Label>
             <Controller
               defaultValue=""
               name="freq"
@@ -227,64 +280,114 @@ export function ScheduleDialog({
                     <SelectItem value="DAILY">Daily</SelectItem>
                     <SelectItem value="WEEKLY">Weekly</SelectItem>
                     <SelectItem value="MONTHLY">Monthly</SelectItem>
+                    <SelectItem value="YEARLY">Yearly</SelectItem>
                   </SelectContent>
                 </Select>
               )}
             />
           </div>
-
           <div className="flex flex-col gap-2">
             <Label>Interval</Label>
             <Input
               min={1}
-              required
               type="number"
-              {...register("wkst", { valueAsNumber: true })}
+              {...register("interval", {
+                valueAsNumber: true,
+                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+              })}
             />
           </div>
-
           <div className="flex flex-col gap-2">
             <Label>By Weekday</Label>
-            <Input required {...register("byweekday")} placeholder="MO,TU,WE" />
+            <Input
+              {...register("byweekday", {
+                validate: (value) => {
+                  if (freq === "WEEKLY" && !value) {
+                    return "Weekday is required for weekly schedules";
+                  }
+                  return true;
+                },
+              })}
+              placeholder="MO,TU,WE"
+            />
           </div>
-
           <div className="flex flex-col gap-2">
             <Label>By Month Day</Label>
-            <Input required {...register("bymonthday")} placeholder="1,15" />
+            <Input
+              {...register("bymonthday", {
+                validate: (value) => {
+                  if (freq === "MONTHLY" && !value) {
+                    // check this
+                    return "Monthday is required for monthly schedules";
+                  }
+                  return true;
+                },
+              })}
+              placeholder="1,15"
+            />
           </div>
-
           <div className="flex flex-col gap-2">
             <Label>By Month</Label>
-            <Input required {...register("bymonth")} placeholder="1-12" />
+            <Input
+              {...register("bymonth", {
+                validate: (value) => {
+                  if (freq === "MONTHLY" && !value) {
+                    return "Monthday is required for monthly schedules"; // work on this
+                  }
+                  return true;
+                },
+              })}
+              placeholder="1-12"
+            />
           </div>
-
           <div className="flex flex-col gap-2">
             <Label>Until</Label>
-            <Input required type="datetime-local" {...register("until")} />
+            <Input
+              type="datetime-local"
+              {...register("until", {
+                validate: (value) => {
+                  if (!value && !end_date) {
+                    return "Please fill either Until or End Date";
+                  }
+                  return true;
+                },
+              })}
+            />
           </div>
-
           <div className="flex flex-col gap-2">
             <Label>Count</Label>
-            <Input required type="number" {...register("count")} />
+            <Input type="number" {...register("count")} />
           </div>
-
           <div className="flex flex-col gap-2">
             <Label>Week Start</Label>
-            <Input required type="number" {...register("wkst")} />
+            <Input type="number" min={0} max={6} {...register("wkst")} />
           </div>
-
           <div className="flex flex-col gap-2">
-            <Label>Start Date</Label>
-            <Input required type="date" {...register("start_date")} />
+            <Label>
+              Start Date <span className="text-red-500">*</span>
+            </Label>
+            <Input type="date" required {...register("start_date")} />
           </div>
-
           <div className="flex flex-col gap-2">
             <Label>End Date</Label>
-            <Input required type="date" {...register("end_date")} />
+            <Input
+              type="date"
+              {...register("end_date", {
+                validate: (value) => {
+                  if (!value && !until) {
+                    return "Please fill either End Date or Until";
+                  }
+                  return true;
+                },
+              })}
+            />
           </div>
-
-          <div className="col-span-2 flex justify-end mt-4">
-            <Button type="submit" disabled={!isValid || isSubmitting}>
+          <div className="md:col-span-2 flex justify-end mt-4">
+            <Button
+              type="submit"
+              disabled={!isValid || isSubmitting}
+              className="w-full md:w-auto"
+            >
               {isSubmitting ? "Saving..." : "Save Schedule"}
             </Button>
           </div>

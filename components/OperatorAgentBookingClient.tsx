@@ -13,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 import { useState } from "react";
 import { formatTime } from "@/lib/common_functions";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Bus, Item, Seat, Trip, TripData } from "@/lib/model";
 import { passengerApi } from "@/app/api/api";
 import {
@@ -31,6 +31,7 @@ import SeatLayoutDialog from "@/components/SeatLayoutDialog";
 import { Spinner } from "@/components/ui/spinner";
 import { useDebounce } from "@/hooks/useDebounce";
 import AgentSeatLayoutDialog from "./AgentSeatLayoutDialog";
+import OperatorAgentSeatLayoutDialog from "./OperatorAgentSeatLayout";
 
 export default function OperatorAgentBookingClient() {
   const searchParams = useSearchParams();
@@ -67,12 +68,15 @@ export default function OperatorAgentBookingClient() {
     per_page,
   );
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const router = useRouter();
 
   async function handleSubmit(
     e: React.FormEvent<HTMLFormElement>,
   ): Promise<void> {
     e.preventDefault();
-    refetch();
+    router.replace(
+      `/operator-agent/bookings?from=${form.route_from}&to=${form.route_to}&date=${form.departure_date}`,
+    );
   }
 
   const handleSelectFromCity = (city: string) => {
@@ -159,7 +163,7 @@ export default function OperatorAgentBookingClient() {
                           onClick={() => handleSelectFromCity(city)}
                           className="w-full text-left px-4 py-2.5 hover:bg-[#00a896] hover:text-white transition-colors flex items-center gap-2 border-b border-border last:border-b-0"
                         >
-                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <MapPin className="w-4 h-4 shrink-0" />
                           <span className="text-sm font-medium">{city}</span>
                         </button>
                       ))}
@@ -284,7 +288,7 @@ export default function OperatorAgentBookingClient() {
           </div>
 
           {isLoading ? (
-            <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+            <div className="rounded-xl bg-white p-12  flex justify-center text-center shadow-sm">
               <Spinner />
             </div>
           ) : data?.items.length === 0 ? (
@@ -335,7 +339,7 @@ export default function OperatorAgentBookingClient() {
                         </DropdownMenu>
                       </div>
                       {/* Info Section */}
-                      <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="grid grid-cols-2 place-items-center md:grid-cols-3 gap-4 mb-6">
                         {/* Price */}
                         <div className="flex flex-col">
                           <span className="text-xs text-muted-foreground  tracking-wide">
@@ -363,8 +367,8 @@ export default function OperatorAgentBookingClient() {
                         </div>
 
                         {/* Status */}
-                        <div className="flex flex-col items-center">
-                          <span className="text-xs text-muted-foreground  tracking-wide">
+                        <div className=" grid col-span-2 md:col-span-1 md:flex flex-col items-center">
+                          <span className="text-xs text-center text-muted-foreground  tracking-wide">
                             Status
                           </span>
                           <div
@@ -432,7 +436,7 @@ export default function OperatorAgentBookingClient() {
       </div>
 
       <div className="hidden">
-        <AgentSeatLayoutDialog
+        <OperatorAgentSeatLayoutDialog
           toggle={useInfoToggle}
           setToggle={setUseInfoToggle}
           setSelectedSeats={setSelectedSeats}

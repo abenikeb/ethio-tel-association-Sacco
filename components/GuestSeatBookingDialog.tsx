@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { SetStateAction, useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,8 @@ type SeatBookingDialogProps = {
   tripId: string;
   onSucess?: () => void;
   operator_id: string;
+  setLayoutToggle: React.Dispatch<SetStateAction<boolean>>;
+  setMultiSelect: React.Dispatch<SetStateAction<string[]>>;
 };
 
 export default function GuestSeatBookingDialog({
@@ -34,6 +36,8 @@ export default function GuestSeatBookingDialog({
   toggle,
   onSucess,
   operator_id,
+  setLayoutToggle,
+  setMultiSelect,
   setToggle,
 }: SeatBookingDialogProps) {
   // Step 1: Passenger Info, Step 2: Seat Selection, Step 3: Confirmation
@@ -92,26 +96,6 @@ export default function GuestSeatBookingDialog({
   };
 
   // Handle seat selection for a passenger
-  const handleSeatSelected = (seatId: string) => {
-    setSeatDict((prev) => ({
-      ...prev,
-      [seatId]: passengers[currentPassengerIndex],
-    }));
-
-    // Move to next passenger or finish
-    if (currentPassengerIndex < passengers.length - 1) {
-      setCurrentPassengerIndex((prev) => prev + 1);
-
-      setEditingPassenger((prev) => ({
-        ...prev,
-        [currentPassengerIndex + 1]: (prev[currentPassengerIndex + 1] ?? 0) + 1,
-      }));
-    } else {
-      // All passengers have seats selected, move to confirmation
-      setSeatToggle(false);
-      setStep(3);
-    }
-  };
 
   // Handle final booking submission
   const handleSubmit = async () => {
@@ -123,8 +107,11 @@ export default function GuestSeatBookingDialog({
     let uuid = uuidv4();
 
     try {
-      console.log(selectedSeats, passengers);
       if (selectedSeats.length === 0 || passengers.length === 0) return;
+
+      passengers.forEach(
+        (p) => (p.email = (p.email ?? "").trim().length === 0 ? null : p.email),
+      );
 
       const response = await passengerApi.guestHoldBooking(tripId, {
         seat_codes: selectedSeats,
@@ -173,21 +160,9 @@ export default function GuestSeatBookingDialog({
   };
 
   const handleBack = () => {
-    if (step === 2) {
-      // Going back from seat selection to passenger info
-      setStep(1);
-      setSeatToggle(false);
-      setCurrentPassengerIndex(0);
-
-      if (bus) {
-        setSeats(bus.seat_template.seats);
-      }
-    } else if (step === 3) {
-      // Going back from confirmation to seat selection
-      setStep(2);
-      setCurrentPassengerIndex(passengers.length - 1);
-      setSeatToggle(true);
-    }
+    setMultiSelect([]);
+    console.log(selectedSeats);
+    setToggle(false);
   };
 
   const handleDialogClose = () => {
@@ -227,6 +202,7 @@ export default function GuestSeatBookingDialog({
               passengers={passengers}
               onPassengersChange={setPassengers}
               onNext={handlePassengerInfoNext}
+              onBack={handleBack}
             />
           )}
 

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import {
+  useOperatorAgent,
   useOperatorBuses,
   useOperatorReport2,
   useOperatorStatCard,
@@ -29,6 +30,7 @@ import {
 import { useAuth } from "@/lib/authContext";
 import { Bus } from "@/lib/model";
 import { Spinner } from "@/components/ui/spinner";
+import { formatCurrency } from "@/lib/report-utils";
 function TicketIdCell({ id }: { id: string }) {
   const [showFull, setShowFull] = useState(false);
   const displayId = showFull ? id : id.slice(0, 8) + "..."; // truncate first 8 chars
@@ -52,6 +54,7 @@ export default function OperatorDashboard() {
   const [operator_name, setOperatorName] = useState("");
   const ranges: Record<string, number> = {
     today: 0,
+    yesterday: 1,
     weekly: 7,
     monthly: 30,
   };
@@ -66,16 +69,22 @@ export default function OperatorDashboard() {
   const startDate = useMemo(() => daySetter(ranges[date] ?? 0), [date]);
   const endDate = useMemo(() => daySetter(0), []);
   const { user } = useAuth();
+  const { data: operator_agents, isLoading: operator_agent_loading } =
+    useOperatorAgent(user?.organization_id || "", undefined, undefined);
   const { data: statCard, isLoading: statCardIsLoading } = useOperatorStatCard(
     user?.organization_id || "",
   );
+  console.log(operator_agents);
+  console.log(startDate, endDate);
 
   const { data, isLoading: report2IsLoading } = useOperatorReport2(
     user?.organization_id || "",
     startDate,
     endDate,
+    agent == "all" ? undefined : agent,
     busPlate == "all" ? undefined : busPlate,
     route == "all" ? undefined : route,
+    // agent == "all" ? undefined : agent,
   );
 
   const { data: bus, isLoading: busIsLoading } = useOperatorBuses(
@@ -83,6 +92,7 @@ export default function OperatorDashboard() {
   );
 
   const { data: routes, isLoading: routeIsLoading } = useRoutes();
+  console.log(agent, "agent id");
 
   const statsData = [
     {
@@ -120,6 +130,7 @@ export default function OperatorDashboard() {
     !user?.organization_id ||
     statCardIsLoading ||
     busIsLoading ||
+    operator_agent_loading ||
     routeIsLoading;
 
   if (isLoading) {
@@ -168,7 +179,6 @@ export default function OperatorDashboard() {
           </div>
         </div>
 
-        {/* Filters Section */}
         <Card className="bg-white border border-border p-6">
           <div className="bg-card border border-border rounded-xl p-6 shadow-sm mb-6">
             <div className="flex items-center justify-between mb-6">
@@ -179,9 +189,9 @@ export default function OperatorDashboard() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-2  lg:grid-cols-4 gap-4">
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground mb-1 block">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="flex flex-col gap-y-1">
+                <Label className="ml-3 text-xs font-medium text-muted-foreground mb-1">
                   Date
                 </Label>
                 <Select value={date} onValueChange={setDate}>
@@ -189,16 +199,16 @@ export default function OperatorDashboard() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={"today"}>Today</SelectItem>
-
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="yesterday">Yesterday</SelectItem>
                     <SelectItem value="weekly">Weekly</SelectItem>
                     <SelectItem value="monthly">Monthly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <div className="flex flex-col gap-y-1">
+                <Label className="ml-3 text-xs font-medium text-muted-foreground mb-1">
                   Bus Plate
                 </Label>
                 <Select value={busPlate} onValueChange={setBusPlate}>
@@ -222,8 +232,8 @@ export default function OperatorDashboard() {
                 </Select>
               </div>
 
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <div className="flex flex-col gap-y-1">
+                <Label className="ml-3 text-xs font-medium text-muted-foreground mb-1">
                   Route
                 </Label>
                 <Select value={route} onValueChange={setRoute}>
@@ -247,8 +257,8 @@ export default function OperatorDashboard() {
                 </Select>
               </div>
 
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <div className="flex flex-col gap-y-1">
+                <Label className="ml-3 text-xs font-medium text-muted-foreground mb-1">
                   Agent
                 </Label>
                 <Select value={agent} onValueChange={setAgent}>
@@ -257,9 +267,20 @@ export default function OperatorDashboard() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Agents</SelectItem>
-                    <SelectItem value="agents">Agent</SelectItem>
-                    <SelectItem value="website">Website</SelectItem>
-                    <SelectItem value="app">App</SelectItem>
+                    {operator_agents ? (
+                      operator_agents.items.map((operator_agent) => (
+                        <SelectItem
+                          key={operator_agent.id}
+                          value={operator_agent.id}
+                        >
+                          {operator_agent.first_name} {operator_agent.last_name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        No Agents
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -284,10 +305,12 @@ export default function OperatorDashboard() {
                 </TableRow>
                 <TableBody>
                   <TableRow>
-                    <TableCell className="p-2">
+                    <TableCell className="p-2 font-semibold">
                       {data?.tickets_sold ?? 0}
                     </TableCell>
-                    <TableCell className="p-2">{data?.revenue ?? 0}</TableCell>
+                    <TableCell className="p-2 font-bold">
+                      {formatCurrency(data?.revenue ?? 0)}
+                    </TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { SetStateAction, useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,12 +10,13 @@ import {
 } from "@/components/ui/dialog";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
-import SeatLayoutDialog from "./GuestSeatLayoutDialog";
+
 import PassengerInfoForm from "./PassengerInfoForm";
 import type { Bus, Passenger, Seat } from "@/lib/model";
-import { agentApi, operatorApi, passengerApi } from "@/app/api/api";
+import { agentApi, DanuAgentApi } from "@/app/api/api";
 import { toast, Toaster } from "sonner";
 import { isAxiosError } from "axios";
+import SeatLayoutDialog from "./SeatLayoutDialog";
 
 type SeatBookingDialogProps = {
   toggle: boolean;
@@ -26,33 +27,25 @@ type SeatBookingDialogProps = {
   tripId: string;
   operator_id: string;
   onSucess?: () => void;
+  setLayoutToggle: React.Dispatch<SetStateAction<boolean>>;
+  setMultiSelect: React.Dispatch<SetStateAction<string[]>>;
 };
 
 export default function AgentSeatBookingDialog({
   tripId,
   agentId,
-  operator_id,
+
   selectedSeats,
   number_of_passengers,
   toggle,
   onSucess,
+  setLayoutToggle,
   setToggle,
+
+  setMultiSelect,
 }: SeatBookingDialogProps) {
   // Step 1: Passenger Info, Step 2: Seat Selection, Step 3: Confirmation
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  console.log(
-    {
-      tripId,
-      agentId,
-      operator_id,
-      selectedSeats,
-      number_of_passengers,
-      toggle,
-      onSucess,
-      setToggle,
-    },
-    "data",
-  );
+  const [step, setStep] = useState<1 | 2>(1);
 
   // Passenger information state
   const [passengers, setPassengers] = useState<Passenger[]>([
@@ -66,9 +59,6 @@ export default function AgentSeatBookingDialog({
 
   // Seat selection state
   const [seatToggle, setSeatToggle] = useState(false);
-  const [bus, setBus] = useState<Bus>();
-  const [seats, setSeats] = useState<Seat[]>([]);
-
   const [seatDict, setSeatDict] = useState<Record<string, Passenger>>({});
   const [currentPassengerIndex, setCurrentPassengerIndex] = useState<number>(0);
   const [editingPassenger, setEditingPassenger] = useState<
@@ -95,6 +85,10 @@ export default function AgentSeatBookingDialog({
     setCurrentPassengerIndex(0);
     setSeatToggle(true);
   };
+  const handlePassengerInfoBack = () => {
+    setStep(1);
+    setSeatDict({});
+  };
 
   // Handle seat selection for a passenger
   const handleSeatSelected = (seatId: string) => {
@@ -111,10 +105,6 @@ export default function AgentSeatBookingDialog({
         ...prev,
         [currentPassengerIndex + 1]: (prev[currentPassengerIndex + 1] ?? 0) + 1,
       }));
-    } else {
-      // All passengers have seats selected, move to confirmation
-      setSeatToggle(false);
-      setStep(3);
     }
   };
 
@@ -130,8 +120,11 @@ export default function AgentSeatBookingDialog({
     try {
       console.log(selectedSeats, passengers);
       if (selectedSeats.length === 0 || passengers.length === 0) return;
+      passengers.forEach(
+        (p) => (p.email = (p.email ?? "").trim().length === 0 ? null : p.email),
+      );
 
-      await agentApi.handleBooking(agentId, {
+      await DanuAgentApi.handleBooking(agentId, {
         trip_id: tripId,
         seat_codes: selectedSeats,
         passenger_details: passengers,
@@ -154,6 +147,7 @@ export default function AgentSeatBookingDialog({
       ]);
       setToggle(false);
       setStep(1);
+      setLayoutToggle(false);
     } catch (error) {
       if (isAxiosError(error)) {
         console.error("Axios error:", error.response?.data || error.message);
@@ -175,17 +169,9 @@ export default function AgentSeatBookingDialog({
   };
 
   const handleBack = () => {
-    if (step === 2) {
-      // Going back from seat selection to passenger info
-      setStep(1);
-      setSeatToggle(false);
-      setCurrentPassengerIndex(0);
-    } else if (step === 3) {
-      // Going back from confirmation to seat selection
-      setStep(2);
-      setCurrentPassengerIndex(passengers.length - 1);
-      setSeatToggle(true);
-    }
+    setMultiSelect([]);
+    console.log(selectedSeats);
+    setToggle(false);
   };
 
   const handleDialogClose = () => {
@@ -217,13 +203,13 @@ export default function AgentSeatBookingDialog({
             </DialogTitle>
           </DialogHeader>
 
-          {/* STEP 1: Passenger Information */}
           {step === 1 && (
             <PassengerInfoForm
               numberOfPassengers={number_of_passengers}
               passengers={passengers}
               onPassengersChange={setPassengers}
               onNext={handlePassengerInfoNext}
+              onBack={handleBack}
             />
           )}
 

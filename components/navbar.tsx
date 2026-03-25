@@ -31,10 +31,10 @@ export default function Navbar(props: NavbarProps) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="relative flex-shrink-0">
-            <span className="text-2xl font-bold text-primary ml-0 mr-15">
-              <Link href="/passenger">DANU BOOKING</Link>
-            </span>
+          <div className="relative h-full flex items-center shrink-0 mr-10">
+            <Link href="/passenger">
+              <img src="/logo.png" className="h-25 w-auto" />
+            </Link>
           </div>
 
           {/* Desktop Menu */}
@@ -59,7 +59,6 @@ export default function Navbar(props: NavbarProps) {
             </div>
           </div>
 
-          {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -96,13 +95,13 @@ export default function Navbar(props: NavbarProps) {
               Home
             </Link>
             <Link
-              href="/about-us"
+              href="/passenger/about-us"
               className="block text-center px-3 py-2 text-gray-700 hover:text-teal-600 font-medium transition-colors"
             >
               About Us
             </Link>
             <Link
-              href="/contact"
+              href="/passenger/contact"
               className="block text-center px-3 py-2 text-gray-700 hover:text-teal-600 font-medium transition-colors"
             >
               Contact
@@ -112,7 +111,7 @@ export default function Navbar(props: NavbarProps) {
               href="/history"
               className="block text-center px-3 py-2 text-gray-700 hover:text-teal-600 font-medium transition-colors"
             >
-              Booking History
+              My Bookings
             </Link>
             <Link
               href="/manage-sessions"

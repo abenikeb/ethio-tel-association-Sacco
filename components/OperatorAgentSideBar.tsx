@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 
 const menuItems = [
   {
@@ -34,15 +33,20 @@ const menuItems = [
     url: "/operator-agent/ticket-booking",
     icon: Ticket,
   },
-  {
-    title: "Booked Tickets",
-    url: "/operator-agent/booked",
-    icon: TicketCheck,
-  },
+  // {
+  //   title: "Booked Tickets",
+  //   url: "/operator-agent/booked",
+  //   icon: TicketCheck,
+  // },
   {
     title: "Refund List",
     url: "/operator-agent/refund-list",
     icon: DollarSign,
+  },
+  {
+    title: "Ticket Booked",
+    url: "/operator-agent/ticket-booked",
+    icon: TicketCheck,
   },
   {
     title: "Report",
@@ -56,14 +60,16 @@ export function OperatorAgentSideBar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border px-6 py-4">
-        <div className="flex items-center gap-2 text-xl font-bold lg:text-2xl">
-          Danu Booking
+      <SidebarHeader className="border-b border-sidebar-border py-0">
+        <div className="flex w-full  justify-center cursor-pointer">
+          <Link href={"/operator-agent/ticket-booking"}>
+            <img src="/logo.png" className="py-0 h-20 w-auto" alt="Danu logo" />
+          </Link>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupContent className="mt-8">
+          <SidebarGroupContent className="mt-2">
             <SidebarMenu className="gap-5">
               {menuItems.map((item) => {
                 const isActive = path === item.url;

@@ -48,6 +48,11 @@ const menuItems = [
   },
 
   {
+    title: "Transaction Management",
+    url: "/operator/transactions",
+    icon: Users,
+  },
+  {
     title: "Report",
     url: "/operator/report",
     icon: TrendingUp,
@@ -70,28 +75,16 @@ export function AppSidebar() {
   const [active, setActive] = useState("");
   return (
     <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border px-6 py-4">
-        <div className="flex items-center gap-2 text-xl font-bold lg:text-2xl">
-          {/* <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary">
-            <Bus className="size-4 text-sidebar-primary-foreground" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-sidebar-foreground">
-              FleetOps
-            </span>
-            <span className="text-xs text-sidebar-foreground/60">
-              Bus Management
-            </span>
-          </div> */}
-          Danu Booking
+      <SidebarHeader className="border-b border-sidebar-border px-6">
+        <div className="flex w-full py-0 justify-center cursor-pointer">
+          <Link href={"/operator"}>
+            <img src="/logo.png" className="py-0 h-26 w-auto" alt="Danu logo" />
+          </Link>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          {/* <SidebarGroupLabel className=" mb-8  px-6 text-xs uppercase tracking-wider text-sidebar-foreground/50">
-            
-          </SidebarGroupLabel> */}
-          <SidebarGroupContent className="mt-8">
+          <SidebarGroupContent>
             <SidebarMenu className="gap-5">
               {menuItems.map((item) => {
                 const isActive = path === item.url;

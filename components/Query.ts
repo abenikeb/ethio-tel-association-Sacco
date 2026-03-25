@@ -22,6 +22,7 @@ import {
   RefundDetail,
   RouteDTO,
   SearchRouteResponse,
+  Seat,
   Session,
   Trip,
   User,
@@ -48,6 +49,26 @@ export interface Trips_s {
     id: string;
     name: string;
   };
+}
+export interface operatorAdminReport {
+  date: string;
+  tickets_sold: number;
+  revenue: number;
+  transaction_id?: string;
+  items: {
+    ticket_id: string;
+    bus_plate_number: string;
+    route_from: string;
+    route_to: string;
+    passenger_name: string;
+    seat_no: string;
+    price: number;
+    sold_by: string;
+    agent_type: string;
+  }[];
+  total: number;
+  page: number;
+  per_page: number;
 }
 export interface searchResult {
   id: string;
@@ -100,6 +121,7 @@ export const usePassengerHistory = (page: number, per_page: number) => {
         page: res.page,
       };
     },
+    staleTime: 5 * 60 * 1000,
   });
 };
 
@@ -110,12 +132,73 @@ export const useSuperAdminStat = () => {
       const res = await superAdminApi.getStats();
       return res;
     },
+    staleTime: 5 * 60 * 1000,
+  });
+};
+export const useDanuAgentReportData = (
+  operator_id: string,
+  from_date: string,
+  to_date: string,
+  page?: number,
+  per_page?: number,
+) => {
+  return useQuery({
+    queryKey: [
+      "danu-agent-report",
+      operator_id,
+      from_date,
+      to_date,
+      page,
+      per_page,
+    ],
+    queryFn: async () => {
+      const res = await DanuAgentApi.getReportData(
+        operator_id,
+        from_date,
+        to_date,
+        page,
+        per_page,
+      );
+      console.log(operator_id, "id");
+
+      return {
+        items: res.items as {
+          ticket_id: string;
+          bus_plate_number: string;
+          route_from: string;
+          route_to: string;
+          passenger_name: string;
+          seat_no: string;
+          price: 0;
+          sold_by: string;
+          agent_type: string;
+        }[],
+        total: res.total,
+        date: res.date,
+        tickets_sold: res.tickets_sold,
+        revenue: res.revenue,
+        page: res.page,
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+};
+export const useOperatorAgentReportSummary = (operator_id: string) => {
+  return useQuery({
+    queryKey: ["operator-agent-report", operator_id],
+    queryFn: async () => {
+      const res = await agentApi.getReportSummary(operator_id);
+      return res;
+    },
+    enabled: !!operator_id,
+    staleTime: 5 * 60 * 1000,
   });
 };
 export const useOperatorAgentReportData = (
   operator_id: string,
-  from_date: string,
-  to_date: string,
+
+  from_date?: string,
+  to_date?: string,
   page?: number,
   per_page?: number,
 ) => {
@@ -137,31 +220,14 @@ export const useOperatorAgentReportData = (
         per_page,
       );
       console.log(res, "from query");
-      return {
-        items: res.items as {
-          ticket_id: string;
-          bus_plate_number: string;
-          route_from: string;
-          route_to: string;
-          passenger_name: string;
-          seat_no: string;
-          price: 0;
-          sold_by: string;
-          agent_type: string;
-        }[],
-        total: res.total,
-        date: res.date,
-        tickets_sold: res.tickets_sold,
-        revenue: res.revenue,
-        page: res.page,
-      };
+      return res as operatorAdminReport[];
     },
   });
 };
 export const useSearchRoute = (
   route_from: string,
   route_to: string,
-  departure_date: string,
+  trip_date: string,
   page?: number,
   per_page?: number,
   org_id?: string,
@@ -171,7 +237,7 @@ export const useSearchRoute = (
       "search_route",
       route_from,
       route_to,
-      departure_date,
+      trip_date,
       org_id,
       page,
       per_page,
@@ -180,7 +246,7 @@ export const useSearchRoute = (
       const res = await passengerApi.searchRoute({
         route_from,
         route_to,
-        departure_date,
+        trip_date,
         page,
         per_page,
       });
@@ -192,6 +258,19 @@ export const useSearchRoute = (
     },
   });
 };
+
+export const useSeatTemplate = (trip_id: string) => {
+  return useQuery({
+    queryKey: ["template", trip_id],
+    queryFn: async () => {
+      const res = await passengerApi.getSeatLayout(trip_id);
+      return res.seats as Seat[];
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: !!trip_id,
+  });
+};
+
 export const useOperator = (page: number, per_page: number) => {
   return useQuery({
     queryKey: ["operator", page, per_page],
@@ -451,8 +530,8 @@ export const useCreateOperatorAgent = () => {
 
 export const useOperatorAgent = (
   operator_id: string,
-  page: number,
-  per_page: number,
+  page?: number,
+  per_page?: number,
 ) => {
   return useQuery({
     queryKey: ["operator_agent", operator_id, page, per_page],
@@ -508,6 +587,7 @@ export const useOperatorReport2 = (
   operator_id: string,
   start_date: string,
   end_date: string,
+  ticket_sold_by_id?: string,
   bus_plate?: string,
   route_id?: string,
   agent_id?: string,
@@ -518,6 +598,7 @@ export const useOperatorReport2 = (
     queryKey: [
       "operator_report",
       operator_id,
+      ticket_sold_by_id,
       start_date,
       end_date,
       bus_plate,
@@ -531,6 +612,7 @@ export const useOperatorReport2 = (
         operator_id,
         start_date,
         end_date,
+        ticket_sold_by_id,
         bus_plate,
         route_id,
         agent_id,
@@ -558,6 +640,38 @@ export const useOperatorReport2 = (
     },
     enabled: !!operator_id,
     staleTime: 1000 * 60 * 5,
+  });
+};
+
+export const useOperatorTransactions = (
+  operator_id: string,
+  paid_by_id?: string,
+  from_date?: string,
+  to_date?: string,
+) => {
+  return useQuery({
+    queryKey: ["danu_agent_refund_list", paid_by_id, from_date, to_date],
+    queryFn: async () => {
+      const res = await operatorApi.getTransactionData(
+        operator_id,
+        paid_by_id,
+        from_date,
+        to_date,
+      );
+      console.log(res);
+      return res.items as {
+        id: string;
+        agent_id: string;
+        paid_by_id: string;
+        paid_amount: number;
+        paid_date: string;
+        transaction_id: string;
+        created_at: string;
+        updated_at: string;
+      }[];
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: !!operator_id,
   });
 };
 
@@ -595,7 +709,51 @@ export const useDanuAgentRefundList = (
     enabled: !!agent_id,
   });
 };
-export const useAgentRefundList = (
+export const useBookingHistoryPublic = (
+  user_id: string,
+  page?: number,
+  per_page?: number,
+) => {
+  return useQuery({
+    queryKey: ["public_user_history", user_id, page, per_page],
+    queryFn: async () => {
+      const res = await passengerApi.getBookingHistoryPublic(
+        user_id,
+        page,
+        per_page,
+      );
+      console.log(res);
+
+      return {
+        items: res.items as {
+          booking_id: string;
+          booking_ref: string;
+          booked_at: string; // ISO date string
+          booking_status: string;
+
+          trip_id: string;
+
+          route_from: string;
+          route_to: string;
+
+          departure_at: string; // ISO date string
+
+          operator_id: string;
+          operator_name: string;
+
+          total_amount: number;
+          passenger_count: number;
+        }[],
+        total: res.total,
+        page: res.page,
+        per_page: res.per_page,
+      };
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: !!user_id,
+  });
+};
+export const useOperatorAgentRefundList = (
   organzation_id: string,
   page?: number,
   per_page?: number,

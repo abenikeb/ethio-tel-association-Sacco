@@ -124,7 +124,9 @@ api.interceptors.response.use(
               break;
 
             default:
-              console.error("Unhandled 401 error:", data);
+              if (window.location.pathname == "/signup") {
+                return;
+              }
               window.location.href = "/login";
               throw error;
           }
@@ -170,6 +172,16 @@ api.interceptors.request.use(
     return Promise.reject(error);
   },
 );
+export const publicApi = {
+  verifyTicketToken: async (token: string) => {
+    const response = await api.get(`/guest/tickets/verify/${token}`);
+    return response.data as {
+      success: boolean;
+      message: string;
+      data?: any;
+    };
+  },
+};
 
 export const tempAPI = {
   payment: async (body: {
@@ -254,6 +266,25 @@ export const kycApi = {
 };
 
 export const authAPI = {
+  resetPassword: async (
+    flow: "email" | "phone",
+    new_password: string,
+    token?: string,
+    phone?: string,
+    code?: string,
+  ) => {
+    let payload = null;
+    if (flow == "email") {
+      payload = {
+        token,
+        new_password,
+      };
+    } else {
+      payload = { phone, code, new_password };
+    }
+    const res = await api.post("/auth/reset-password", payload);
+    return res.data;
+  },
   signup: async (body: {
     first_name: string;
     last_name: string;
@@ -359,17 +390,22 @@ export const authAPI = {
     return response.data;
   },
   forgotPassword: async (identifier: string) => {
-    let response = null;
-    if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$/.test(identifier)) {
-      response = await api.post("/auth/forgot-password", {
-        email: identifier,
-      });
-    } else {
-      response = await api.post("/auth/forgot-password", {
-        phone: identifier,
-      });
+    try {
+      let response = null;
+      if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$/.test(identifier)) {
+        response = await api.post("/auth/forgot-password", {
+          email: identifier,
+        });
+      } else {
+        response = await api.post("/auth/forgot-password", {
+          phone: identifier,
+        });
+      }
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
     }
-    return response.data;
   },
 };
 export const sessionMgmt = {
@@ -819,6 +855,48 @@ export const DanuAgentApi = {
       throw error;
     }
   },
+  getReportData: async (
+    operator_id: string,
+    from_date: string,
+    to_date: string,
+    page?: number,
+    per_page?: number,
+  ) => {
+    try {
+      const response = await api.get(`/agent/${operator_id}/reports/tickets`, {
+        params: {
+          from_date,
+          to_date,
+        },
+      });
+
+      return response.data[0] ?? response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+  handleBooking: async (
+    agent_id: string,
+
+    body: {
+      trip_id: string;
+      seat_codes: string[];
+      passenger_details: Passenger[];
+      payment_method: "cash" | "wallet";
+
+      payment_reference: string;
+      external_ref: string;
+    },
+  ) => {
+    try {
+      const response = await api.post(`/agent/${agent_id}/bookings`, body);
+      return response.data;
+    } catch (error) {
+      console.log(error, "error from agent handle booking");
+      throw error;
+    }
+  },
 };
 
 export const passengerApi = {
@@ -826,6 +904,25 @@ export const passengerApi = {
     try {
       const response = await api.get(`/user/bookings`, {
         params: {
+          page,
+          per_page,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+  getBookingHistoryPublic: async (
+    user_id: string,
+    page?: number,
+    per_page?: number,
+  ) => {
+    try {
+      const response = await api.get(`/user/trip-bookings`, {
+        params: {
+          user_id,
           page,
           per_page,
         },
@@ -867,7 +964,7 @@ export const passengerApi = {
   searchRoute: async (body: {
     route_from: string;
     route_to: string;
-    departure_date: string;
+    trip_date: string;
     page?: number;
     per_page?: number;
   }) => {
@@ -877,7 +974,7 @@ export const passengerApi = {
         params: {
           from_city: body.route_from,
           to_city: body.route_to,
-          departure_date: body.departure_date,
+          trip_date: body.trip_date,
           page: body.page,
           per_page: body.per_page,
         },
@@ -1039,9 +1136,70 @@ export const passengerApi = {
   },
 };
 export const agentApi = {
+  cancelBooking: async (operator_id: string, booking_id: string) => {
+    try {
+      const res = await api.delete(
+        `/operator-agents/${operator_id}/bookings/${booking_id}`,
+      );
+      console.log(res.data, "data");
+      return res.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  handleTransactionId: async (
+    operator_id: string,
+    body: {
+      transaction_id: string;
+      paid_date?: Date;
+      paid_amount: number;
+    },
+  ) => {
+    const response = await api.post(
+      `/operator-agents/${operator_id}/reports/payments`,
+      body,
+    );
+    return response.data;
+  },
   getAllKYCdocuments: async (agent_id: string) => {
     const response = await api.get(`/agent/${agent_id}/kyc-documents`);
     return response.data;
+  },
+  getReportSummary: async (operator_id: string) => {
+    const response = await api.get(`/operator-agents/${operator_id}/reports`);
+    return response.data as {
+      operator_id: string;
+      operator_name: string;
+      seller_id: string;
+      seller_name: string;
+      date: string;
+      today_revenue: number;
+      tickets_sold_today: number;
+    };
+  },
+  getReportData: async (
+    operator_id: string,
+    from_date?: string,
+    to_date?: string,
+    page?: number,
+    per_page?: number,
+  ) => {
+    try {
+      const response = await api.get(
+        `/operator-agents/${operator_id}/reports/tickets`,
+        {
+          params: {
+            from_date,
+            to_date,
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   },
   getRefundList: async (
     organzation_id: string,
@@ -1065,55 +1223,55 @@ export const agentApi = {
     }
   },
   handleBooking: async (
-    agent_id: string,
+    operator_id: string,
 
     body: {
       trip_id: string;
       seat_codes: string[];
       passenger_details: Passenger[];
       payment_method: "cash" | "wallet";
+
       payment_reference: string;
       external_ref: string;
     },
   ) => {
     try {
-      const response = await api.post(`/agent/${agent_id}/bookings`, body);
+      const response = await api.post(
+        `/operator-agents/${operator_id}/bookings`,
+        body,
+      );
       return response.data;
     } catch (error) {
       console.log(error, "error from agent handle booking");
       throw error;
     }
   },
-  getReportData: async (
-    operator_id: string,
-    from_date: string,
-    to_date: string,
-    page?: number,
-    per_page?: number,
-  ) => {
-    try {
-      const response = await api.get(
-        `/operator-agents/${operator_id}/reports/tickets`,
-        {
-          params: {
-            from_date,
-            to_date,
-          },
-        },
-      );
-      return response.data;
-    } catch (error) {
-      console.log(error);
-      throw error;
-    }
-  },
 };
 
 export const operatorApi = {
+  getTransactionData: async (
+    operator_id: string,
+    paid_by_id?: string,
+    from_date?: string,
+    to_date?: string,
+  ) => {
+    const res = await api.get(
+      `/operator/${operator_id}/reports/agent-payments`,
+      {
+        params: {
+          paid_by_id,
+          from_date,
+          to_date,
+        },
+      },
+    );
+    return res.data;
+  },
   getReportData: async (
     operator_id: string,
     start_date?: string,
     end_date?: string,
+    ticket_sold_by_id?: string,
     bus_plate?: string,
     route_id?: string,
     agent_id?: string,
@@ -1126,6 +1284,7 @@ export const operatorApi = {
           start_date,
           end_date,
           agent_id,
+          ticket_sold_by_id,
           bus_plate,
           route_id,
           page,
@@ -1159,26 +1318,96 @@ export const operatorApi = {
   },
   createSchedule: async (
     operator_id: string,
-    body: {
+    body?: {
       route_id: string;
       bus_id: string;
       driver_id: string;
       departure_time: string;
       price: number;
       freq: string;
-      interval: number;
-      byweekday: string;
-      bymonthday: string;
-      bymonth: string;
-      until: string;
-      count: number;
-      wkst: number;
-      start_date: string;
-      end_date: string;
+      interval?: number;
+      byweekday?: string;
+      bymonthday?: string;
+      bymonth?: string;
+      until?: string;
+      count?: number;
+      wkst?: number;
+      start_date?: string;
+      end_date?: string;
     },
   ) => {
     try {
       await api.post(`/operator/${operator_id}/schedules`, body);
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  getTripDetail: async (operator_id: string, schedule_id: string) => {
+    try {
+      const res = await api.get(
+        `/operator/${operator_id}/schedules/${schedule_id}`,
+      );
+      return res.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  updateOperatorSchedule: async (
+    operator_id: string,
+    schedule_id: string,
+    data: {
+      id?: string;
+
+      operator?: {
+        id: string;
+        name: string;
+      };
+
+      route?: {
+        id: string;
+        route_from: string;
+        route_to: string;
+      };
+
+      bus?: {
+        id: string;
+        plate_no: string;
+      };
+
+      driver?: {
+        id: string;
+        name: string;
+      };
+
+      departure_time?: string;
+      price?: number;
+
+      // Recurrence
+      freq?: string;
+      interval?: number;
+      byweekday?: string;
+      bymonthday?: string;
+      bymonth?: string;
+      until?: string;
+      count?: number;
+      wkst?: number;
+
+      // Dates
+      start_date?: string;
+      end_date?: string;
+
+      created_at?: string;
+      updated_at?: string;
+    },
+  ) => {
+    try {
+      const res = await api.patch(
+        `/operator/${operator_id}/schedules/${schedule_id}`,
+        data,
+      );
+      return res.data;
     } catch (err) {
       console.log(err);
       throw err;
@@ -1494,6 +1723,27 @@ export const operatorApi = {
 };
 
 export const profileApi = {
+  editProfileInfo: async (body: {
+    first_name?: string;
+    last_name?: string;
+    display_name?: string;
+    dob?: string;
+    gender?: string;
+    avatar_file_id?: string;
+    bio?: string;
+    address?: {
+      country?: string;
+      region?: string;
+      city?: string;
+      sub_city?: string;
+      woreda?: string;
+      kebele?: string;
+      house_number?: string;
+    };
+  }) => {
+    const res = await api.patch(`/user/me`, body);
+    return res.data;
+  },
   deleteAccount: async (password: string, anonymize = false) => {
     const response = await api.delete("/user/me", {
       data: { password, anonymize },

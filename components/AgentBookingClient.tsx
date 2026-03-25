@@ -13,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 import { useState } from "react";
 import { formatTime } from "@/lib/common_functions";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Bus, Item, Seat, Trip, TripData } from "@/lib/model";
 import { passengerApi } from "@/app/api/api";
 import {
@@ -68,12 +68,15 @@ export default function AgentBookingClient() {
     per_page,
   );
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const router = useRouter();
 
   async function handleSubmit(
     e: React.FormEvent<HTMLFormElement>,
   ): Promise<void> {
     e.preventDefault();
-    refetch();
+    router.replace(
+      `/agent/bookings?from=${form.route_from}&to=${form.route_to}&date=${form.departure_date}`,
+    );
   }
 
   const handleSelectFromCity = (city: string) => {
@@ -285,7 +288,7 @@ export default function AgentBookingClient() {
           </div>
 
           {isLoading ? (
-            <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+            <div className="rounded-xl bg-white p-12  flex justify-center text-center shadow-sm">
               <Spinner />
             </div>
           ) : data?.items.length === 0 ? (
@@ -336,7 +339,7 @@ export default function AgentBookingClient() {
                         </DropdownMenu>
                       </div>
                       {/* Info Section */}
-                      <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="grid grid-cols-2 place-items-center md:grid-cols-3 gap-4 mb-6">
                         {/* Price */}
                         <div className="flex flex-col">
                           <span className="text-xs text-muted-foreground  tracking-wide">
@@ -364,8 +367,8 @@ export default function AgentBookingClient() {
                         </div>
 
                         {/* Status */}
-                        <div className="flex flex-col items-center">
-                          <span className="text-xs text-muted-foreground  tracking-wide">
+                        <div className=" grid col-span-2 md:col-span-1 md:flex flex-col items-center">
+                          <span className="text-xs text-center text-muted-foreground  tracking-wide">
                             Status
                           </span>
                           <div

@@ -3,21 +3,14 @@
 import type React from "react";
 
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
-import type { Bus, Passenger, Seat } from "@/lib/model";
-import GuestSeatBookingDialog from "./GuestSeatBookingDialog";
-import Image from "next/image";
-import { operatorApi, passengerApi } from "@/app/api/api";
+import type { Seat } from "@/lib/model";
+import { passengerApi } from "@/app/api/api";
 import { Spinner } from "./ui/spinner";
 import SeatBookingDialog from "./SeatBookingDialog";
+import { useSeatTemplate } from "./Query";
 
 type SeatLayoutProps = {
   toggle: boolean;
@@ -28,7 +21,7 @@ type SeatLayoutProps = {
   onSuccess?: () => void;
   setSeats: React.Dispatch<React.SetStateAction<Seat[]>>;
   operator_id: string;
-  setToggle: (val: boolean) => void;
+  setToggle: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export default function SeatLayoutDialog({
@@ -44,17 +37,7 @@ export default function SeatLayoutDialog({
 }: SeatLayoutProps) {
   const [multiSelectSeats, setMultiSelectSeats] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!trip_id) return;
-    const fetch = async () => {
-      const data = await passengerApi.getSeatLayout(trip_id);
-      if (data) {
-        setSeats(data?.seats);
-      }
-    };
-    fetch();
-  }, [trip_id]);
-
+  const { data: seats_, isLoading, refetch } = useSeatTemplate(trip_id);
   useEffect(() => {
     // Reset multi-select when dialog closes
     if (!toggle) {
@@ -62,37 +45,14 @@ export default function SeatLayoutDialog({
     }
   }, [toggle]);
 
-  const toggleSeat = (seat: Seat) => {
-    if (seat.status === "booked" || seat.status === "held") return;
-
-    setMultiSelectSeats((prev) => {
-      const isSelected = prev.includes(seat.seat_code);
-      if (isSelected) {
-        return prev.filter((s) => s !== seat.seat_code);
-      } else {
-        return [...prev, seat.seat_code];
-      }
-    });
-  };
-
   const handleConfirm = () => {
     // if (multiSelectSeats.length === 0) return;
     setSelectedSeats(multiSelectSeats);
-    // Mark selected seats as booked
-    setSeats((prev) =>
-      prev?.map((s) =>
-        multiSelectSeats.includes(s.seat_code) ? { ...s, status: "booked" } : s,
-      ),
-    );
-
-    // Assign seats to passengers in order - first selected seat to first passenger, etc.
     setOpen(true);
-    setToggle(false);
-
-    setMultiSelectSeats([]);
+    // setMultiSelectSeats([]);
   };
 
-  const grouped = seats.reduce<Record<number, Seat[]>>((acc, seat) => {
+  const grouped = (seats_ ?? []).reduce<Record<number, Seat[]>>((acc, seat) => {
     if (!acc[seat.row]) acc[seat.row] = [];
     acc[seat.row].push(seat);
     return acc;
@@ -103,10 +63,6 @@ export default function SeatLayoutDialog({
   return (
     <div>
       <Dialog open={toggle} onOpenChange={setToggle}>
-        <DialogTrigger asChild>
-          <Button>Choose Seats</Button>
-        </DialogTrigger>
-
         <DialogContent className="max-w-md h-[80%] overflow-y-scroll">
           <DialogTitle>Choose your seats</DialogTitle>
           <div className="flex flex-col items-center gap-4 mt-4">
@@ -122,7 +78,7 @@ export default function SeatLayoutDialog({
             </div>
           )} */}
 
-            {seats.length == 0 ? (
+            {isLoading ? (
               <div className="w-full h-full flex items-center justify-center">
                 <Spinner />
               </div>
@@ -187,7 +143,6 @@ export default function SeatLayoutDialog({
             )}
           </div>
 
-          {/* Legend */}
           <div className="flex justify-between text-xs mt-4 gap-2">
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 bg-white border border-gray-400 rounded" />{" "}
@@ -217,7 +172,8 @@ export default function SeatLayoutDialog({
       <SeatBookingDialog
         toggle={open}
         setToggle={setOpen}
-        onSucess={onSuccess}
+        setLayoutToggle={setToggle}
+        onSucess={refetch}
         tripId={trip_id}
         selectedSeats={selectedSeats}
         number_of_passengers={selectedSeats.length}

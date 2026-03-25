@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,9 +15,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/authContext";
+import { profileApi } from "@/app/api/api";
+import { isAxiosError } from "axios";
 
 export function UpdateUserForm() {
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
+  console.log(user);
+  const getMaxDOB = () => {
+    const today = new Date();
+    today.setFullYear(today.getFullYear() - 18);
+    return today.toISOString().split("T")[0];
+  };
 
   const [formData, setFormData] = useState({
     first_name: "",
@@ -38,19 +48,48 @@ export function UpdateUserForm() {
     },
   });
 
+  useEffect(() => {
+    setFormData({
+      first_name: user?.first_name ?? "",
+      last_name: user?.last_name ?? "",
+      display_name: user?.display_name ?? "",
+      dob: user?.dob ?? "",
+      gender: user?.gender ?? "",
+      avatar_file_id: user?.avatar_file_id ?? "",
+      bio: user?.bio ?? "",
+      address: {
+        country: user?.address?.country ?? "",
+        region: user?.address?.region ?? "",
+        city: user?.address?.city ?? "",
+        sub_city: user?.address?.sub_city ?? "",
+        woreda: user?.address?.woreda ?? "",
+        kebele: user?.address?.kebele ?? "",
+        house_number: user?.address?.house_number ?? "",
+      },
+    });
+  }, [user]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    if (!isValidDOB(formData.dob)) {
+      toast.error("You must be at least 18 years old.");
+      return;
+    }
+    if (formData.dob === new Date().toISOString().split("T")[0]) {
+      toast.error("Invalid date of birth");
+      return;
+    }
 
     try {
-      // TODO: Implement API call to update user
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast("Your profile information has been successfully updated.");
+      await profileApi.editProfileInfo(formData);
+      toast.success("Your profile information has been successfully updated.");
     } catch (error) {
-      toast("Failed to update your profile. Please try again.");
+      if (isAxiosError(error)) {
+        toast.error(error.response?.data.detail);
+        return;
+      }
+      toast.error("Failed to update your profile. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -58,6 +97,24 @@ export function UpdateUserForm() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+  const isValidDOB = (dob: string) => {
+    if (!dob) return false;
+
+    const birthDate = new Date(dob);
+    const today = new Date();
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+
+    return age >= 18;
   };
 
   const handleAddressChange = (field: string, value: string) => {
@@ -103,6 +160,7 @@ export function UpdateUserForm() {
           <Input
             id="dob"
             type="date"
+            max={getMaxDOB()}
             value={formData.dob}
             onChange={(e) => handleInputChange("dob", e.target.value)}
           />

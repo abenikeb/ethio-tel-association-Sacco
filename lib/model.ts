@@ -200,6 +200,7 @@ export interface SeatExtraMetadata {
 }
 export interface UseAuthUser {
   sub: string;
+  user_id: string;
   roles: string[];
   portal: string;
   first_name: string;
@@ -297,9 +298,9 @@ export interface PopularRoutesResponse {
 }
 export type Passenger = {
   name: string;
-  email: string;
+  email: string | null;
   phone: string;
-  id_number: string;
+  id_number: string | null;
 };
 export interface RouteDTO {
   id: string;
