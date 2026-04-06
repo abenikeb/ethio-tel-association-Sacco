@@ -1,0 +1,16 @@
+(
+echo node_modules/
+echo .next/
+echo dist/
+echo out/
+echo .env
+echo .env.*
+echo !.env.example
+echo *.log
+echo .DS_Store
+echo *.tsbuildinfo
+echo next-env.d.ts
+) > .gitignore
+
+git add .gitignore apps/admin apps/superadmin
+git status --short
