@@ -1,0 +1,22 @@
+{
+	"name": "ethio-tel-association-sacco",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Monorepo for the Ethio Telecom Association SACCO system: backend API, member/staff frontend, admin, superadmin and booking portal.",
+	"scripts": {
+		"install:all": "npm --prefix apps/backend install && npm --prefix apps/frontend install && npm --prefix apps/admin install && npm --prefix apps/superadmin install && pnpm --dir apps/portal install",
+		"dev:backend": "npm --prefix apps/backend run dev",
+		"dev:frontend": "npm --prefix apps/frontend run dev -- -p 3000",
+		"dev:admin": "npm --prefix apps/admin run dev -- -p 3001",
+		"dev:superadmin": "npm --prefix apps/superadmin run dev -- -p 3002",
+		"dev:portal": "pnpm --dir apps/portal dev -p 3003",
+		"build:backend": "npm --prefix apps/backend run build",
+		"build:frontend": "npm --prefix apps/frontend run build",
+		"build:admin": "npm --prefix apps/admin run build",
+		"build:superadmin": "npm --prefix apps/superadmin run build",
+		"build:portal": "pnpm --dir apps/portal build"
+	},
+	"engines": {
+		"node": ">=18.18.0"
+	}
+}
