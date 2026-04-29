@@ -10,7 +10,7 @@ import {
 	superAdminApi,
 =======
   agentApi,
-  DanuAgentApi,
+  PortalAgentApi,
   kycApi,
   notificationAPI,
   operatorApi,
@@ -190,7 +190,7 @@ export const useSaccoAgentReportData = (
 			);
 			console.log(operator_id, "id");
 =======
-export const useDanuAgentOperatorReport = (
+export const usePortalAgentOperatorReport = (
   agent_id: string,
   page?: number,
   per_page?: number,
@@ -199,7 +199,7 @@ export const useDanuAgentOperatorReport = (
 ) => {
   return useQuery({
     queryKey: [
-      "danu-agent-report",
+      "portal-agent-report",
       agent_id,
 
       page,
@@ -208,7 +208,7 @@ export const useDanuAgentOperatorReport = (
       to_date,
     ],
     queryFn: async () => {
-      const res = await DanuAgentApi.getReportForAllOperator(
+      const res = await PortalAgentApi.getReportForAllOperator(
         agent_id,
         from_date,
         to_date,
@@ -249,7 +249,7 @@ export const useDanuAgentOperatorReport = (
     staleTime: 5 * 60 * 1000,
   });
 };
-export const useDanuAgentReportData = (
+export const usePortalAgentReportData = (
   operator_id: string,
   from_date: string,
   to_date: string,
@@ -258,7 +258,7 @@ export const useDanuAgentReportData = (
 ) => {
   return useQuery({
     queryKey: [
-      "danu-agent-report",
+      "portal-agent-report",
       operator_id,
       from_date,
       to_date,
@@ -266,7 +266,7 @@ export const useDanuAgentReportData = (
       per_page,
     ],
     queryFn: async () => {
-      const res = await DanuAgentApi.getReportData(
+      const res = await PortalAgentApi.getReportData(
         operator_id,
         from_date,
         to_date,
@@ -827,7 +827,7 @@ export const useOperatorTransactions = (
   per_page?: number,
 ) => {
   return useQuery({
-    queryKey: ["danu_agent_refund_list", paid_by_id, from_date, to_date],
+    queryKey: ["portal_agent_refund_list", paid_by_id, from_date, to_date],
     queryFn: async () => {
       const res = await operatorApi.getTransactionData(
         operator_id,

@@ -145,7 +145,7 @@ export default function AgentSeatBookingDialog({
 				external_ref: `ex_${uuid}`,
 			});
 =======
-      const data = await DanuAgentApi.handleBooking(agentId, {
+      const data = await PortalAgentApi.handleBooking(agentId, {
         trip_id: tripId,
         seat_codes: selectedSeats,
         passenger_details: passengers,

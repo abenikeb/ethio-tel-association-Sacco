@@ -90,7 +90,7 @@ const menuItems = [
   },
 
   {
-    title: "Danu's Report",
+    title: "Portal's Report",
     url: "/agent/report",
     icon: TrendingUp,
   },
@@ -120,7 +120,7 @@ export function AgentSideBar() {
       <SidebarHeader className="border-b border-sidebar-border py-0">
         <div className="flex w-full  justify-center cursor-pointer">
           <Link href={"/agent/ticket-booking"}>
-            <img src="/logo.png" className="py-0 h-25 w-auto" alt="Danu logo" />
+            <img src="/logo.png" className="py-0 h-25 w-auto" alt="Portal logo" />
           </Link>
         </div>
       </SidebarHeader>

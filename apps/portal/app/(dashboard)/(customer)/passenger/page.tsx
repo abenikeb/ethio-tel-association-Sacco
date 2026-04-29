@@ -57,7 +57,7 @@ export default function SaccoBooking() {
 			}
 		};
 =======
-export default function DanuBooking() {
+export default function PortalBooking() {
   const router = useRouter();
   const { access_token } = useAuth();
   const today = new Date().toISOString().split("T")[0];
@@ -740,7 +740,7 @@ export default function DanuBooking() {
       <footer className="bg-[#098274] text-white pt-12 pb-8 px-6 sm:px-12 w-full border-t border-[#098274]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-10">
           <div className="flex flex-col gap-1.5 text-sm text-gray-100">
-            <p>danubooking@gmail.com</p>
+            <p>portalbooking@gmail.com</p>
             <p>0911854567</p>
             <p>Near Jakros, EBM building</p>
 

@@ -2,13 +2,13 @@
 
 Monorepo for the SACCO system. Each app lives under `apps/` and is installed and run on its own.
 
-| App         | Path              | Purpose                                                                                                 | Package manager | Dev port                  |
-| ----------- | ----------------- | ------------------------------------------------------------------------------------------------------- | --------------- | ------------------------- |
-| Backend API | `apps/backend`    | Node/TypeScript API with Prisma and sockets                                                             | npm             | set in the backend `.env` |
-| Frontend    | `apps/frontend`   | Member and staff web app (Next.js)                                                                      | npm             | 3000                      |
-| Admin       | `apps/admin`      | Admin dashboard (Next.js)                                                                               | npm             | 3001                      |
-| Superadmin  | `apps/superadmin` | Superadmin console (Next.js)                                                                            | npm             | 3002                      |
-| Portal      | `apps/portal`     | Bus booking portal (Next.js), imported with full history from `Bisho-Team/biisho-danu-booking-frontend` | pnpm            | 3003                      |
+| App         | Path              | Purpose                                                                                                   | Package manager | Dev port                  |
+| ----------- | ----------------- | --------------------------------------------------------------------------------------------------------- | --------------- | ------------------------- |
+| Backend API | `apps/backend`    | Node/TypeScript API with Prisma and sockets                                                               | npm             | set in the backend `.env` |
+| Frontend    | `apps/frontend`   | Member and staff web app (Next.js)                                                                        | npm             | 3000                      |
+| Admin       | `apps/admin`      | Admin dashboard (Next.js)                                                                                 | npm             | 3001                      |
+| Superadmin  | `apps/superadmin` | Superadmin console (Next.js)                                                                              | npm             | 3002                      |
+| Portal      | `apps/portal`     | Bus booking portal (Next.js), imported with full history from `Bisho-Team/biisho-portal-booking-frontend` | pnpm            | 3003                      |
 
 ## Requirements
 

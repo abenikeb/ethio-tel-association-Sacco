@@ -67,7 +67,6 @@ export default function OperatorDashboard() {
 		endDate,
 	);
 
-<<<<<<< HEAD
 	const { data: routes, isLoading: routeIsLoading } = useRoutes();
 
 	const statsData = [
@@ -80,22 +79,6 @@ export default function OperatorDashboard() {
 			value: data?.tickets_sold ?? 0,
 		},
 	];
-=======
-  console.log(data);
-
-  const { data: routes, isLoading: routeIsLoading } = useRoutes();
-
-  const statsData = [
-    {
-      label: "Today's Revenue",
-      value: formatCurrency(data?.revenue ?? 0),
-    },
-    {
-      label: "Tickets Sold Today",
-      value: data?.tickets_sold ?? 0,
-    },
-  ];
->>>>>>> origin/dev
 
 	const isLoading = !user?.organization_id || routeIsLoading;
 

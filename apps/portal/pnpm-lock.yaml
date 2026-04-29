@@ -7,14 +7,7 @@ settings:
 importers:
   .:
     dependencies:
-<<<<<<< HEAD
       "@fortawesome/fontawesome-svg-core":
-=======
-      '@formatjs/intl-localematcher':
-        specifier: ^0.8.2
-        version: 0.8.2
-      '@fortawesome/fontawesome-svg-core':
->>>>>>> origin/dev
         specifier: ^7.2.0
         version: 7.2.0
       "@fortawesome/free-solid-svg-icons":

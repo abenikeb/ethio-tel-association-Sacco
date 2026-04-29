@@ -18,7 +18,6 @@ import "@/i18n";
 import { useTranslation } from "react-i18next";
 
 export default function SignupPage() {
-<<<<<<< HEAD
 	const [showPassword, setShowPassword] = useState(false);
 	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const [showTermsModal, setShowTermsModal] = useState(false);
@@ -33,23 +32,6 @@ export default function SignupPage() {
 		confirmPassword: "",
 		acceptTerms: onRead,
 	});
-=======
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const { t } = useTranslation();
-  const router = useRouter();
-  const [onRead, setOnRead] = useState(false);
-  const [formData, setFormData] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
-    acceptTerms: onRead,
-  });
->>>>>>> origin/dev
 
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, value, type, checked } = e.target;
@@ -431,7 +413,7 @@ export default function SignupPage() {
                 {t("create_account")}
               </h1>
               <p className="text-gray-600">
-                {t("join_danu_booking_and_start_booking_today")}
+                {t("join_portal_booking_and_start_booking_today")}
               </p>
             </div>
 
