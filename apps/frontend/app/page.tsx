@@ -55,14 +55,14 @@ export default function Home() {
 
 							<div className="hidden items-center md:flex">
 								<Image
-									src="https://biisho.com/wp-content/uploads/2024/08/cropped-WhatsApp_Image_2024-03-01_at_3.31.41_PM-removebg-preview-300x168.png"
-									alt="Biisho Logo"
+									src="https://sacco.com/wp-content/uploads/2024/08/cropped-WhatsApp_Image_2024-03-01_at_3.31.41_PM-removebg-preview-300x168.png"
+									alt="sacco Logo"
 									width={40}
 									height={40}
 									className="mr-2 h-10 w-10 object-contain"
 								/>
 								<span className="text-sm font-semibold text-slate-800 md:text-base">
-									Biisho
+									sacco
 								</span>
 							</div>
 						</div>
@@ -138,7 +138,7 @@ export default function Home() {
 						Trusted by Leading Organizations
 					</h2>
 					<div className="flex flex-wrap items-center justify-center gap-12">
-						{["Ethio Credit Association", "Biisho"].map((partner) => (
+						{["Ethio Credit Association", "sacco"].map((partner) => (
 							<div
 								key={partner}
 								className="group flex flex-col items-center transition-all duration-300 hover:scale-105">
@@ -313,7 +313,7 @@ export default function Home() {
 							</h3>
 							<p className="text-sm text-slate-400">
 								A collaborative initiative between Ethio Credit Association, Et
-								Telecom, and Biisho to provide accessible financial services to
+								Telecom, and sacco to provide accessible financial services to
 								underserved communities.
 							</p>
 						</div>
@@ -346,7 +346,7 @@ export default function Home() {
 					<div className="border-t border-slate-800 pt-8 text-center text-sm">
 						<p>
 							© {new Date().getFullYear()} Ethio Credit Association, Et Telecom
-							& Biisho. All rights reserved.
+							& sacco. All rights reserved.
 						</p>
 					</div>
 				</div>

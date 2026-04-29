@@ -29,7 +29,7 @@ const api = axios.create({
 });
 const refreshApi = axios.create({
   // baseURL: "/api/proxy",
-  baseURL: `https://portal.biisho.et/api/v1`,
+  baseURL: `https://portal.sacco.et/api/v1`,
 
   headers: {
     "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY,

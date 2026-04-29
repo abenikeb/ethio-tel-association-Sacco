@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
 		return [
 			{
 				source: "/api/v1/:path*",
-				destination: "https://portal.biisho.et/api/v1/:path*",
+				destination: "https://portal.sacco.et/api/v1/:path*",
 			},
 		];
 	},

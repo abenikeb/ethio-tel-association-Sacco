@@ -79,7 +79,7 @@ export const AuthProvider = ({
 		}
 
 		const ws = new WebSocket(
-			`wss://portal.biisho.et/api/v1/ws/notifications/?token=${token}`,
+			`wss://portal.sacco.et/api/v1/ws/notifications/?token=${token}`,
 		);
 
 		socketRef.current = ws;
