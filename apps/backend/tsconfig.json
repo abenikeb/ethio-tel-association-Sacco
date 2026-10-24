@@ -1,0 +1,68 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"display": "Node + Express + Prisma Backend",
+
+	"compilerOptions": {
+		/* === Core Settings === */
+		"target": "ES2022",
+		"module": "CommonJS",
+		"moduleResolution": "Node",
+		"lib": ["ES2022"],
+		"types": ["node"],
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+
+		/* === Project Structure === */
+		"rootDir": ".",
+		"outDir": "dist",
+		"baseUrl": "./",
+
+		/* === Output === */
+		"sourceMap": true,
+		"declaration": true,
+		"declarationMap": true,
+		"removeComments": false,
+
+		/* === Path Aliases === */
+		"paths": {
+			"@/*": ["*"],
+			"@/controllers/*": ["controllers/*"],
+			"@/services/*": ["services/*"],
+			"@/prisma/*": ["prisma/*"],
+			"@/middlewares/*": ["middlewares/*"],
+			"@/utils/*": ["utils/*"],
+			"@/config/*": ["config/*"],
+			"@/routes/*": ["routes/*"],
+			"@/types/*": ["types/*"]
+		},
+
+		/* === Type Checking Strictness === */
+		"strict": false,
+		"forceConsistentCasingInFileNames": false,
+		"noImplicitAny": false,
+		"noImplicitThis": false,
+		"noImplicitReturns": false,
+		"noFallthroughCasesInSwitch": false,
+		"noUncheckedIndexedAccess": false,
+		"exactOptionalPropertyTypes": false,
+		"useUnknownInCatchVariables": false,
+
+		/* === Performance & Compatibility === */
+		"skipLibCheck": true,
+		"isolatedModules": true,
+		"moduleDetection": "force",
+
+		/* === Imports === */
+		// "allowImportingTsExtensions": true,
+		"noUncheckedSideEffectImports": true
+	},
+
+	"include": ["src/**/*", "prisma/**/*"],
+	"exclude": ["node_modules", "dist", "coverage"],
+
+	"ts-node": {
+		"require": ["tsconfig-paths/register"],
+		"transpileOnly": true
+	}
+}
