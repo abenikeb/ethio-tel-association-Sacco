@@ -5,41 +5,41 @@ import "@/app/globals.css";
 import { AuthProvider } from "@/lib/authContext";
 
 export const metadata: Metadata = {
-  title: "Danu Booking - Book Your Bus Tickets Online",
-  description:
-    "Book your bus tickets online with Danu booking. Easy, fast, and reliable bus reservations for your journey.",
+	title: "Sacco Booking - Book Your Bus Tickets Online",
+	description:
+		"Book your bus tickets online with Sacco booking. Easy, fast, and reliable bus reservations for your journey.",
 
-  icons: {
-    icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
-    ],
-    apple: "/apple-icon.png",
-  },
+	icons: {
+		icon: [
+			{
+				url: "/icon-light-32x32.png",
+				media: "(prefers-color-scheme: light)",
+			},
+			{
+				url: "/icon-dark-32x32.png",
+				media: "(prefers-color-scheme: dark)",
+			},
+			{
+				url: "/icon.svg",
+				type: "image/svg+xml",
+			},
+		],
+		apple: "/apple-icon.png",
+	},
 };
 
 export default function unauthorizedLayout({
-  children,
+	children,
 }: Readonly<{
-  children: React.ReactNode;
+	children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en">
-      <body className={`font-sans antialiased`}>
-        <AuthProvider blackListRoles={[]}>
-          <main>{children}</main>
-        </AuthProvider>
-      </body>
-    </html>
-  );
+	return (
+		<html lang="en">
+			<body className={`font-sans antialiased`}>
+				<AuthProvider blackListRoles={[]}>
+					<main>{children}</main>
+				</AuthProvider>
+			</body>
+		</html>
+	);
 }

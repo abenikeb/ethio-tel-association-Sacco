@@ -13,9 +13,9 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 // export const metadata: Metadata = {
-//   title: "Danu Booking - Book Your Bus Tickets Online",
+//   title: "Sacco Booking - Book Your Bus Tickets Online",
 //   description:
-//     "Book your bus tickets online with Danu Booking. Easy, fast, and reliable bus reservations for your journey.",
+//     "Book your bus tickets online with Sacco Booking. Easy, fast, and reliable bus reservations for your journey.",
 
 //   icons: {
 //     icon: [
@@ -37,33 +37,33 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 // };
 
 export default function DashboardLayout({
-  children,
+	children,
 }: Readonly<{
-  children: React.ReactNode;
+	children: React.ReactNode;
 }>) {
-  const [isNavbarLoaded, setIsNavbarLoaded] = useState(false);
-  return (
-    <html lang="en">
-      <body className={`font-sans antialiased`}>
-        <AuthProvider blackListRoles={[]}>
-          <Navbar
-            initalPath={[
-              { href: "/passenger", label: "Home" },
-              // { href: "/passenger/bookings", label: "Bookings" },
-              { href: "/passenger/about-us", label: "About Us" },
-              { href: "/passenger/contact", label: "Contact" },
-            ]}
-            onLoaded={() => setIsNavbarLoaded(true)}
-          />
-          {isNavbarLoaded ? (
-            // <AuthProtector>
-            <main>{children}</main>
-          ) : (
-            // </AuthProtector>
-            <div className="p-4"></div>
-          )}
-        </AuthProvider>
-      </body>
-    </html>
-  );
+	const [isNavbarLoaded, setIsNavbarLoaded] = useState(false);
+	return (
+		<html lang="en">
+			<body className={`font-sans antialiased`}>
+				<AuthProvider blackListRoles={[]}>
+					<Navbar
+						initalPath={[
+							{ href: "/passenger", label: "Home" },
+							// { href: "/passenger/bookings", label: "Bookings" },
+							{ href: "/passenger/about-us", label: "About Us" },
+							{ href: "/passenger/contact", label: "Contact" },
+						]}
+						onLoaded={() => setIsNavbarLoaded(true)}
+					/>
+					{isNavbarLoaded ? (
+						// <AuthProtector>
+						<main>{children}</main>
+					) : (
+						// </AuthProtector>
+						<div className="p-4"></div>
+					)}
+				</AuthProvider>
+			</body>
+		</html>
+	);
 }
