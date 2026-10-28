@@ -1,0 +1,172 @@
+"use client";
+
+import {
+<<<<<<< HEAD
+	Bus,
+	Calendar,
+	Home,
+	Users,
+	Settings,
+	ScanFace,
+	Ticket,
+	DollarSign,
+	ChartBar,
+	TrendingUp,
+	TicketCheck,
+=======
+  Bus,
+  Calendar,
+  Home,
+  Users,
+  Settings,
+  ScanFace,
+  Ticket,
+  DollarSign,
+  ChartBar,
+  TrendingUp,
+  TicketCheck,
+  TrendingUpDown,
+>>>>>>> origin/dev
+} from "lucide-react";
+import {
+	Sidebar,
+	SidebarContent,
+	SidebarGroup,
+	SidebarGroupContent,
+	SidebarGroupLabel,
+	SidebarHeader,
+	SidebarMenu,
+	SidebarMenuButton,
+	SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { TrendingDownRounded } from "@mui/icons-material";
+
+const menuItems = [
+<<<<<<< HEAD
+	{
+		title: "Ticket Booking",
+		url: "/agent/ticket-booking",
+		icon: Ticket,
+	},
+	{
+		title: "Refund List",
+		url: "/agent/refund-list",
+		icon: DollarSign,
+	},
+	{
+		title: "Ticket Booked",
+		url: "/agent/ticket-booked",
+		icon: TicketCheck,
+	},
+
+	{
+		title: "Report",
+		url: "/agent/report",
+		icon: TrendingUp,
+	},
+=======
+  {
+    title: "Ticket Booking",
+    url: "/agent/ticket-booking",
+    icon: Ticket,
+  },
+  {
+    title: "Refund List",
+    url: "/agent/refund-list",
+    icon: DollarSign,
+  },
+  {
+    title: "Ticket Booked",
+    url: "/agent/ticket-booked",
+    icon: TicketCheck,
+  },
+  {
+    title: "Operator Report",
+    url: "/agent/operator-report",
+    icon: TrendingUpDown,
+  },
+
+  {
+    title: "Danu's Report",
+    url: "/agent/report",
+    icon: TrendingUp,
+  },
+>>>>>>> origin/dev
+];
+
+export function AgentSideBar() {
+	const path = usePathname();
+
+<<<<<<< HEAD
+	return (
+		<Sidebar>
+			<SidebarHeader className="border-b border-sidebar-border px-6 py-4">
+				<div className="flex items-center gap-2 text-xl font-bold lg:text-2xl">
+					Sacco Booking
+				</div>
+			</SidebarHeader>
+			<SidebarContent>
+				<SidebarGroup>
+					<SidebarGroupContent className="mt-8">
+						<SidebarMenu className="gap-5">
+							{menuItems.map((item) => {
+								const isActive = path === item.url;
+=======
+  return (
+    <Sidebar>
+      <SidebarHeader className="border-b border-sidebar-border py-0">
+        <div className="flex w-full  justify-center cursor-pointer">
+          <Link href={"/agent/ticket-booking"}>
+            <img src="/logo.png" className="py-0 h-25 w-auto" alt="Danu logo" />
+          </Link>
+        </div>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent className="">
+            <SidebarMenu className="gap-5">
+              {menuItems.map((item) => {
+                const isActive = path === item.url;
+>>>>>>> origin/dev
+
+								return (
+									<SidebarMenuItem key={item.title}>
+										<SidebarMenuButton asChild isActive={isActive}>
+											<Link
+												href={item.url}
+												className="flex items-center gap-3 px-6">
+												<item.icon className="size-4" />
+												<span className="text-base font-semibold">
+													{item.title}
+												</span>
+											</Link>
+										</SidebarMenuButton>
+									</SidebarMenuItem>
+								);
+							})}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+				<SidebarGroup className="mt-auto">
+					<SidebarGroupContent>
+						<SidebarMenu>
+							<SidebarMenuItem>
+								<SidebarMenuButton asChild>
+									<Link
+										href="/settings"
+										className="flex items-center gap-3 px-6">
+										<Settings className="size-4" />
+										<span>Settings</span>
+									</Link>
+								</SidebarMenuButton>
+							</SidebarMenuItem>
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+			</SidebarContent>
+		</Sidebar>
+	);
+}

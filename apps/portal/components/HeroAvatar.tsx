@@ -1,0 +1,81 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { onLogout } from "@/lib/common_functions";
+import { useAuth } from "@/lib/authContext";
+import { usePathname } from "next/navigation";
+import { Toggle } from "./ui/toggle";
+import { Switch } from "./ui/switch";
+import { useAvatar } from "./Query";
+
+export default function AvatarHero() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { data: avatar } = useAvatar();
+
+  const path = usePathname();
+  const toggleDark = () => {
+    document.documentElement.classList.toggle("dark");
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Avatar className="h-8 w-8 cursor-pointer">
+          <AvatarImage
+            src={avatar?.avatar_url ?? ""}
+            alt={user?.display_name}
+          />
+          <AvatarFallback>
+            {user?.first_name[0].toUpperCase()}
+            {user?.last_name[0].toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuItem
+          onClick={() => {
+            router.replace(`/profile?from=${path}`);
+          }}
+          className="text-black cursor-pointer"
+        >
+          Profile
+        </DropdownMenuItem>
+        {/* <DropdownMenuItem
+          onClick={() => {
+            router.replace("/manage-sessions");
+          }}
+          className="text-black cursor-pointer"
+        >
+          Manage Sessions
+        </DropdownMenuItem> */}
+        {/* <DropdownMenuItem
+          onClick={() => {
+            router.replace("/settings");
+          }}
+          className="text-black cursor-pointer"
+        >
+          Settings
+        </DropdownMenuItem> */}
+        <DropdownMenuItem
+          onClick={onLogout}
+          className="text-red-600 focus:text-red-600 cursor-pointer"
+        >
+          Logout
+        </DropdownMenuItem>
+        {/* <div className="w-full flex justify-center p-2">
+          {" "}
+          <Switch className="mt-2" onClick={toggleDark} />
+        </div> */}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
