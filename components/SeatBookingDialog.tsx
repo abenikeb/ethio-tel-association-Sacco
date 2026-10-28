@@ -18,6 +18,9 @@ import type { Bus, Passenger, Seat } from "@/lib/model";
 import { operatorApi, passengerApi } from "@/app/api/api";
 import { toast, Toaster } from "sonner";
 import { isAxiosError } from "axios";
+import "@/i18n";
+import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 
 type SeatBookingDialogProps = {
   toggle: boolean;
@@ -42,7 +45,8 @@ export default function SeatBookingDialog({
 }: SeatBookingDialogProps) {
   // Step 1: Passenger Info, Step 2: Seat Selection, Step 3: Confirmation
   const [step, setStep] = useState<1 | 2 | 3>(1);
-
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
   // Passenger information state
   const [passengers, setPassengers] = useState<Passenger[]>([
     {
@@ -138,6 +142,7 @@ export default function SeatBookingDialog({
       );
 
       toast.success("Seats successfully booked!", { duration: 3000 });
+      queryClient.invalidateQueries({ queryKey: ["history"] });
       onSucess?.();
 
       // Reset state
@@ -174,10 +179,22 @@ export default function SeatBookingDialog({
   };
 
   const handleBack = () => {
+    setPassengers([
+      {
+        name: "",
+        email: "",
+        phone: "",
+        id_number: "",
+      },
+    ]);
+    // setSeatDict({});
+
+    setCurrentPassengerIndex(0);
+    console.log(selectedSeats);
     if (step === 2) {
       setStep(1);
-    } else if (step === 1) {
-      setToggle(false); // go back to previous dialog
+    } else {
+      setToggle(false);
     }
   };
 
@@ -197,7 +214,6 @@ export default function SeatBookingDialog({
     setCurrentPassengerIndex(0);
     setEditingPassenger({});
   };
-  console.log("opening the seat booking");
 
   return (
     <div>
@@ -210,8 +226,8 @@ export default function SeatBookingDialog({
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {step === 1 && "Enter Passenger Information"}
-              {step === 2 && "Review & Confirm Booking"}
+              {step === 1 && t("enterPassengerInfo")}
+              {step === 2 && t("reviewAndConfirm")}
             </DialogTitle>
           </DialogHeader>
 

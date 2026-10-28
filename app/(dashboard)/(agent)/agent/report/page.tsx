@@ -24,6 +24,7 @@ import { useSaccoAgentReportData, useRoutes } from "@/components/Query";
 import { useAuth } from "@/lib/authContext";
 
 import { Spinner } from "@/components/ui/spinner";
+import { formatCurrency } from "@/lib/report-utils";
 function TicketIdCell({ id }: { id: string }) {
 	const [showFull, setShowFull] = useState(false);
 	const displayId = showFull ? id : id.slice(0, 8) + "..."; // truncate first 8 chars
@@ -66,6 +67,7 @@ export default function OperatorDashboard() {
 		endDate,
 	);
 
+<<<<<<< HEAD
 	const { data: routes, isLoading: routeIsLoading } = useRoutes();
 
 	const statsData = [
@@ -78,6 +80,22 @@ export default function OperatorDashboard() {
 			value: data?.tickets_sold ?? 0,
 		},
 	];
+=======
+  console.log(data);
+
+  const { data: routes, isLoading: routeIsLoading } = useRoutes();
+
+  const statsData = [
+    {
+      label: "Today's Revenue",
+      value: formatCurrency(data?.revenue ?? 0),
+    },
+    {
+      label: "Tickets Sold Today",
+      value: data?.tickets_sold ?? 0,
+    },
+  ];
+>>>>>>> origin/dev
 
 	const isLoading = !user?.organization_id || routeIsLoading;
 

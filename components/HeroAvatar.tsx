@@ -13,10 +13,13 @@ import { useAuth } from "@/lib/authContext";
 import { usePathname } from "next/navigation";
 import { Toggle } from "./ui/toggle";
 import { Switch } from "./ui/switch";
+import { useAvatar } from "./Query";
 
 export default function AvatarHero() {
   const router = useRouter();
   const { user } = useAuth();
+  const { data: avatar } = useAvatar();
+
   const path = usePathname();
   const toggleDark = () => {
     document.documentElement.classList.toggle("dark");
@@ -25,8 +28,11 @@ export default function AvatarHero() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Avatar className="h-9 w-9 cursor-pointer">
-          <AvatarImage src={user?.avatar_file_id} alt={user?.display_name} />
+        <Avatar className="h-8 w-8 cursor-pointer">
+          <AvatarImage
+            src={avatar?.avatar_url ?? ""}
+            alt={user?.display_name}
+          />
           <AvatarFallback>
             {user?.first_name[0].toUpperCase()}
             {user?.last_name[0].toUpperCase()}
@@ -43,24 +49,22 @@ export default function AvatarHero() {
         >
           Profile
         </DropdownMenuItem>
-        {user?.roles[0] == "passenger" && (
-          <DropdownMenuItem
-            onClick={() => {
-              router.replace(`/history?from=${path}`);
-            }}
-            className="text-black cursor-pointer"
-          >
-            My Bookings
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem
+        {/* <DropdownMenuItem
           onClick={() => {
             router.replace("/manage-sessions");
           }}
           className="text-black cursor-pointer"
         >
           Manage Sessions
-        </DropdownMenuItem>
+        </DropdownMenuItem> */}
+        {/* <DropdownMenuItem
+          onClick={() => {
+            router.replace("/settings");
+          }}
+          className="text-black cursor-pointer"
+        >
+          Settings
+        </DropdownMenuItem> */}
         <DropdownMenuItem
           onClick={onLogout}
           className="text-red-600 focus:text-red-600 cursor-pointer"

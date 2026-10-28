@@ -2,11 +2,20 @@
 
 import { UpdateAgentDto } from "@/components/UpdateAgentForm";
 import {
+<<<<<<< HEAD
 	deleteAllCookies,
 	getAccessToken,
 	getCSRFToken,
 	getRefreshToken,
 	getSessionId,
+=======
+  deleteAllCookies,
+  getAccessToken,
+  getCSRFToken,
+  getRefreshToken,
+  getSessionId,
+  setAccessToken,
+>>>>>>> origin/dev
 } from "@/lib/auth";
 import { getClientToken } from "@/lib/common_functions";
 import {
@@ -16,10 +25,16 @@ import {
 	Bus,
 	Passenger,
 } from "@/lib/model";
+import { CodeOffRounded } from "@mui/icons-material";
 import axios from "axios";
 
 const api = axios.create({
+<<<<<<< HEAD
 	baseURL: "/api/proxy",
+=======
+  // baseURL: "/api/proxy",
+  baseURL: `https://danu.biisho.et/api/v1`,
+>>>>>>> origin/dev
 
 	headers: {
 		"X-API-KEY": process.env.NEXT_PUBLIC_API_KEY,
@@ -31,6 +46,20 @@ const api = axios.create({
 	decompress: true,
 	withCredentials: true,
 });
+const refreshApi = axios.create({
+  // baseURL: "/api/proxy",
+  baseURL: `https://danu.biisho.et/api/v1`,
+
+  headers: {
+    "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
+
+  responseType: "json",
+  decompress: true,
+  withCredentials: true,
+});
 
 const getCookie = (name: string) => {
 	if (typeof document === "undefined") return null;
@@ -41,15 +70,57 @@ const getCookie = (name: string) => {
 };
 
 const api_webhook = axios.create({
+<<<<<<< HEAD
 	headers: {
 		"Content-Type": "application/json",
 		"Accept": "application/json",
 	},
 	baseURL: "https://chapa-webhook-bisho.onrender.com",
 	// baseURL: "http://localhost:8000",
+=======
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
+  baseURL: "https://chapa-webhook-bisho.onrender.com",
+>>>>>>> origin/dev
 });
 
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((promise) => {
+    if (error) {
+      promise.reject(error);
+    } else {
+      promise.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+// 1. Request Interceptor (Runs before every call)
+api.interceptors.request.use(
+  async (config) => {
+    // This will log on every single call
+    const refresh_token = (await getRefreshToken()) ?? "No token found";
+
+    console.log(`🚀 API Call to: ${config.url}`);
+    console.log("Current Refresh Token:", refresh_token);
+
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  },
+);
+
+// 2. Response Interceptor (Keep this to handle errors)
 api.interceptors.response.use(
+<<<<<<< HEAD
 	(response) => response,
 	(error) => {
 		const originalRequest = error.config;
@@ -140,12 +211,158 @@ api.interceptors.response.use(
 		}
 		return Promise.reject(error);
 	},
+=======
+  (response) => response,
+  (error) => {
+    // Log only if the call fails
+    console.error("❌ API Error:", error.response?.status, error.config.url);
+    return Promise.reject(error);
+  },
+);
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    const publicPath = ["/login", "/signup", "/verify"];
+
+    if (error.response) {
+      const status = error.response.status ?? "";
+      const data = error.response.data ?? "";
+      const code = data.code ?? "";
+      const detail = data.detail ?? "";
+
+      if (!publicPath.includes(window.location.pathname)) {
+        console.log(detail, "error detail from response interceptor");
+
+        if (
+          detail &&
+          typeof detail === "string" &&
+          detail?.includes("revoked")
+        ) {
+          await deleteAllCookies();
+          console.error("Session revoked — clearing cookies and redirecting");
+          window.location.href = "/login";
+          return Promise.reject(error);
+        }
+
+        if (status === 401) {
+          console.log("........................\n");
+          console.log(error);
+          console.log(detail);
+          console.log("........................\n");
+          switch (detail) {
+            case "Not authenticated":
+            case "ACCESS_TOKEN_EXPIRED":
+              if (!originalRequest._retry) {
+                if (isRefreshing) {
+                  console.log(
+                    "isAlready refereshing so no need to do it again",
+                  );
+                  // If already refreshing, put this request in a queue
+                  return new Promise(function (resolve, reject) {
+                    failedQueue.push({ resolve, reject });
+                  })
+                    .then((token) => {
+                      console.log("setting the bearer");
+                      if (typeof token === "string" && token.length > 0) {
+                        originalRequest.headers.Authorization = `Bearer ${token}`;
+                      }
+                      return api(originalRequest);
+                    })
+                    .catch((err) => {
+                      return Promise.reject(err);
+                    });
+                }
+
+                originalRequest._retry = true;
+                isRefreshing = true;
+
+                try {
+                  console.log("\n\nTRYING TO REFRESH\n\n");
+                  // Call your refresh endpoint
+                  const refresh_token = (await getRefreshToken()) ?? "";
+                  console.log(
+                    "Current Refresh Token before refresh call:",
+                    refresh_token,
+                  );
+                  const refreshResponse = await authAPI.refresh(refresh_token);
+                  console.log("REFRESH RESPONSE", refreshResponse);
+                  setAccessToken(
+                    refreshResponse.token,
+                    refreshResponse.refresh_expiry,
+                  );
+
+                  console.log("REFRESH RESPONSE", refreshResponse);
+                  processQueue(null, refreshResponse?.token);
+
+                  // Retry the original failed request
+                  return api(originalRequest);
+                } catch (refreshError) {
+                  console.log(
+                    "Error occured while trying to refresh taking you to the login page",
+                    refreshError,
+                  );
+                  processQueue(refreshError, null);
+                  await deleteAllCookies();
+
+                  window.location.href = "/login";
+                  return Promise.reject(refreshError);
+                } finally {
+                  // Reset the lock
+                  isRefreshing = false;
+                }
+              }
+              break;
+
+            // ---------------------------------------------------------
+            // Keep your existing cases below
+            // ---------------------------------------------------------
+            case "CSRF_MISSING":
+            case "CSRF_INVALID":
+              if (!originalRequest._retry) {
+                originalRequest._retry = true;
+                return api(originalRequest);
+              }
+              console.error(`${code}: Forcing re-login`);
+              window.location.href = "/login";
+              break;
+
+            case "CSRF_EXPIRED":
+            case "REFRESH_REUSED":
+            case "REFRESH_EXPIRED":
+            case "REFRESH_INVALID":
+            case "SESSION_INVALID":
+            case "USER_NOT_FOUND":
+              console.error(
+                `${detail} detected — clearing state and redirecting`,
+              );
+              localStorage.clear();
+              sessionStorage.clear();
+              await deleteAllCookies(); // Good idea to clear cookies on these fatal errors too
+              window.location.href = "/login";
+              break;
+
+            default:
+              console.log("default 401 handler");
+              // window.location.href = "/login";
+              break;
+          }
+        } else if (status === 403) {
+          console.log("403 Forbidden Error", error);
+          throw error;
+        }
+      }
+    }
+    return Promise.reject(error);
+  },
+>>>>>>> origin/dev
 );
 
 api.interceptors.request.use(
 	async (config) => {
 		const token = await getAccessToken();
 
+<<<<<<< HEAD
 		if (token) {
 			config.headers.Authorization = `Bearer ${token}`;
 		}
@@ -158,6 +375,19 @@ api.interceptors.request.use(
 				console.log("csrf token set in request interceptor:", csrfToken);
 			});
 		}
+=======
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    const csrf = getCookie("csrf_token");
+    if (!csrf) {
+      getCSRFToken().then((csrfToken) => {
+        if (csrfToken) {
+          config.headers["x-csrf-token"] = csrfToken;
+        }
+      });
+    }
+>>>>>>> origin/dev
 
 		if (csrf) {
 			config.headers["X-CSRF-Token"] = csrf;
@@ -266,6 +496,7 @@ export const kycApi = {
 };
 
 export const authAPI = {
+<<<<<<< HEAD
 	resetPassword: async (
 		flow: "email" | "phone",
 		new_password: string,
@@ -295,6 +526,51 @@ export const authAPI = {
 		try {
 			const response = await api.post("/auth/register", body);
 			console.log(response);
+=======
+  resendPhoneOTP: async (phone: string) => {
+    try {
+      const response = await api.post("/auth/resend-phone-otp", {
+        phone,
+      });
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  resetPassword: async (
+    flow: "email" | "phone",
+    new_password: string,
+    token?: string,
+    phone?: string,
+    code?: string,
+  ) => {
+    let payload = null;
+    if (flow == "email") {
+      payload = {
+        token,
+        new_password,
+      };
+    } else {
+      payload = { phone, code, new_password };
+    }
+    const res = await api.post("/auth/reset-password", payload);
+    return res.data;
+  },
+  signup: async (body: {
+    first_name: string;
+    last_name: string;
+    email?: string | null;
+    phone: string;
+    password: string; // need attention
+  }) => {
+    try {
+      const payload = { ...body };
+      if (!payload.email || payload.email.trim().length === 0) {
+        delete payload.email;
+      }
+      const response = await api.post("/auth/register", payload);
+>>>>>>> origin/dev
 
 			return response.data;
 		} catch (err) {
@@ -316,6 +592,7 @@ export const authAPI = {
 				// portal,
 			});
 
+<<<<<<< HEAD
 			return response.data;
 		} catch (error) {
 			console.log(error);
@@ -407,6 +684,113 @@ export const authAPI = {
 			throw err;
 		}
 	},
+=======
+      return response?.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+  verifyEmail: async (token: string) => {
+    try {
+      const response = await api.post(`/auth/verify-email/${token}`);
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+  verifyPhone: async (phone: string, code: string) => {
+    try {
+      const response = await api.post(`/auth/verify-phone`, {
+        phone,
+        code,
+      });
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+
+  resendEmailVerification: async (email: string) => {
+    try {
+      const response = await api.post(`/auth/resend-email-verification`, {
+        email,
+      });
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  refresh: async (refresh_token: string) => {
+    try {
+      const response = await refreshApi.post(`/auth/refresh`, {
+        refresh_token,
+      });
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+  logout: async () => {
+    try {
+      const session_id = await getSessionId();
+      const refresh_token = await getRefreshToken();
+      const csrf_token = await getCSRFToken();
+      console.log(
+        "Logging out with session_id:",
+        session_id,
+        "and refresh_token:",
+        refresh_token,
+        "and csrf_token:",
+        csrf_token,
+      );
+      await api.post(
+        "/user/me/sessions/logout",
+        {
+          refresh_token,
+          session_id,
+        },
+        {
+          headers: {
+            "x-csrf-token": csrf_token,
+          },
+        },
+      );
+      await deleteAllCookies();
+    } catch (error) {
+      await deleteAllCookies();
+      console.log(error);
+    } finally {
+      window.location.replace("/login");
+    }
+  },
+  whoAmI: async () => {
+    const response = await api.get(`/user/me`);
+    return response.data;
+  },
+  forgotPassword: async (identifier: string) => {
+    try {
+      let response = null;
+      if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$/.test(identifier)) {
+        response = await api.post("/auth/forgot-password", {
+          email: identifier,
+        });
+      } else {
+        response = await api.post("/auth/forgot-password", {
+          phone: identifier,
+        });
+      }
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+>>>>>>> origin/dev
 };
 export const sessionMgmt = {
 	getAllSession: async () => {
@@ -840,6 +1224,7 @@ export const superAdminApi = {
 		return response.data;
 	},
 };
+<<<<<<< HEAD
 export const SaccoAgentApi = {
 	getRefundList: async (agent_id: string, page?: number, per_page?: number) => {
 		try {
@@ -878,6 +1263,70 @@ export const SaccoAgentApi = {
 	},
 	handleBooking: async (
 		agent_id: string,
+=======
+export const DanuAgentApi = {
+  getReportForAllOperator: async (
+    agent_id: string,
+    from_date?: string,
+    to_date?: string,
+    page?: number,
+    per_page?: number,
+  ) => {
+    try {
+      const response = await api.get(`/agent/${agent_id}/reports/revenue`, {
+        params: {
+          page,
+          per_page,
+          from_date,
+          to_date,
+        },
+      });
+      console.log(agent_id, "report for all operator from api");
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+  getRefundList: async (agent_id: string, page?: number, per_page?: number) => {
+    try {
+      const response = await api.get(`/agent/${agent_id}/reports/refunds`, {
+        params: {
+          page,
+          per_page,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+  getReportData: async (
+    operator_id: string,
+    from_date: string,
+    to_date: string,
+    page?: number,
+    per_page?: number,
+  ) => {
+    try {
+      const response = await api.get(`/agent/${operator_id}/reports/tickets`, {
+        params: {
+          from_date,
+          to_date,
+        },
+      });
+      console.log(response.data[0], "report data from api");
+
+      return response.data[0];
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+  handleBooking: async (
+    agent_id: string,
+>>>>>>> origin/dev
 
 		body: {
 			trip_id: string;
@@ -900,6 +1349,7 @@ export const SaccoAgentApi = {
 };
 
 export const passengerApi = {
+<<<<<<< HEAD
 	getBookingHistory: async (page?: number, per_page?: number) => {
 		try {
 			const response = await api.get(`/user/bookings`, {
@@ -933,6 +1383,59 @@ export const passengerApi = {
 			throw error;
 		}
 	},
+=======
+  transferBooking: async (
+    booking_id: string,
+    passenger: Passenger,
+    ticket_ids: string[],
+  ) => {
+    try {
+      const response = await api.post(`/user/bookings/${booking_id}/transfer`, {
+        new_passenger: passenger,
+        ticket_ids: ticket_ids,
+        transfer_key: crypto.randomUUID(),
+      });
+      return response.data;
+    } catch (error) {
+      console.log(error, "error from transfer booking");
+      throw error;
+    }
+  },
+
+  getBookingHistory: async (page?: number, per_page?: number) => {
+    try {
+      const response = await api.get(`/user/bookings`, {
+        params: {
+          page,
+          per_page,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+  getBookingHistoryPublic: async (
+    user_id: string,
+    page?: number,
+    per_page?: number,
+  ) => {
+    try {
+      const response = await api.get(`/user/trip-bookings`, {
+        params: {
+          user_id,
+          page,
+          per_page,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+>>>>>>> origin/dev
 
 	cancelBooking: async (booking_id: string) => {
 		try {
@@ -955,6 +1458,7 @@ export const passengerApi = {
 				payment_method,
 			});
 
+<<<<<<< HEAD
 			return response.data;
 		} catch (error) {
 			console.log(error);
@@ -980,6 +1484,31 @@ export const passengerApi = {
 				},
 			});
 			console.log(response.data);
+=======
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+  searchRoute: async (body: {
+    route_from: string;
+    route_to: string;
+    trip_date: string;
+    page?: number;
+    per_page?: number;
+  }) => {
+    try {
+      const response = await api.get("/guest/routes/search", {
+        params: {
+          from_city: body.route_from,
+          to_city: body.route_to,
+          trip_date: body.trip_date,
+          page: body.page,
+          per_page: body.per_page,
+        },
+      });
+>>>>>>> origin/dev
 
 			return response.data;
 		} catch (err) {
@@ -1248,7 +1777,31 @@ export const agentApi = {
 	},
 };
 
+export const notificationAPI = {
+  getMyNotifications: async (from_date?: string) => {
+    try {
+      const res = await api.get("/user/me/notifications", {
+        params: { from_date },
+      });
+      return res.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  readAllNotifications: async () => {
+    try {
+      const res = await api.post("/user/me/notifications/read-all");
+      console.log(res.data);
+      return res.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+};
 export const operatorApi = {
+<<<<<<< HEAD
 	getTransactionData: async (
 		operator_id: string,
 		paid_by_id?: string,
@@ -1302,6 +1855,67 @@ export const operatorApi = {
 			const response = await api.get(
 				`/operator/${operator_id}/reports/summary`,
 			);
+=======
+  getTransactionData: async (
+    operator_id: string,
+    paid_by_id?: string,
+    from_date?: string,
+    to_date?: string,
+    page?: number,
+    per_page?: number,
+  ) => {
+    try {
+      const res = await api.get(`/operator/${operator_id}/agent-payments`, {
+        params: {
+          paid_by_id,
+          from_date,
+          to_date,
+          page,
+          per_page,
+        },
+      });
+      return res.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  getReportData: async (
+    operator_id: string,
+    start_date?: string,
+    end_date?: string,
+    ticket_sold_by_id?: string,
+    bus_plate?: string,
+    route_id?: string,
+    agent_id?: string,
+    page?: number,
+    per_page?: number,
+  ) => {
+    try {
+      const res = await api.get(`/operator/${operator_id}/reports/tickets`, {
+        params: {
+          start_date,
+          end_date,
+          agent_id,
+          ticket_sold_by_id,
+          bus_plate,
+          route_id,
+          page,
+          per_page,
+        },
+      });
+      return res.data;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  },
+  getReportStatCard: async (operator_id: string) => {
+    try {
+      const response = await api.get(
+        `/operator/${operator_id}/reports/summary`,
+      );
+>>>>>>> origin/dev
 
 			return response.data as {
 				operator_id: string;
@@ -1622,6 +2236,7 @@ export const operatorApi = {
 		return response;
 	},
 
+<<<<<<< HEAD
 	createDriver: async (
 		body: {
 			first_name: string;
@@ -1652,6 +2267,40 @@ export const operatorApi = {
 		);
 		return response.data;
 	},
+=======
+  createDriver: async (
+    body: {
+      first_name: string;
+      last_name: string;
+      email: string;
+      phone: string;
+      password: string;
+    },
+    operator_id: string,
+  ) => {
+    try {
+      const response = await api.post(`/operator/${operator_id}/drivers`, body);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  getAllBuses: async (operator_id: string) => {
+    try {
+      const response = await api.get(`/operator/${operator_id}/buses`);
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+  deleteBus: async (operator_id: string, bus_id: string) => {
+    const response = await api.delete(
+      `/operator/${operator_id}/buses/${bus_id}`,
+    );
+    return response.data;
+  },
+>>>>>>> origin/dev
 
 	createTrip: async (
 		operator_id: string,
@@ -1723,6 +2372,7 @@ export const operatorApi = {
 };
 
 export const profileApi = {
+<<<<<<< HEAD
 	editProfileInfo: async (body: {
 		first_name?: string;
 		last_name?: string;
@@ -1757,6 +2407,55 @@ export const profileApi = {
 		});
 		return response.data;
 	},
+=======
+  getMyAvatar: async () => {
+    const response = await api.get("/user/me/avatar");
+    return response.data;
+  },
+  updateAvatar: async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await api.post("/user/me/avatar", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
+  editProfileInfo: async (body: {
+    first_name?: string;
+    last_name?: string;
+    display_name?: string;
+    dob?: string;
+    gender?: string;
+    bio?: string;
+    address?: {
+      country?: string;
+      region?: string;
+      city?: string;
+      sub_city?: string;
+      woreda?: string;
+      kebele?: string;
+      house_number?: string;
+    };
+  }) => {
+    const res = await api.patch(`/user/me`, body);
+    return res.data;
+  },
+  deleteAccount: async (password: string, anonymize = false) => {
+    const response = await api.delete("/user/me", {
+      data: { password, anonymize },
+    });
+    return response.data;
+  },
+  changePassword: async (old_password: string, new_password: string) => {
+    const response = await api.put("/user/me/change-password", {
+      old_password,
+      new_password,
+    });
+    return response.data;
+  },
+>>>>>>> origin/dev
 };
 
 export default api;

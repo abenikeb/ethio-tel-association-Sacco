@@ -11,6 +11,7 @@ export interface AddOperatorForm {
 export interface History {
   booking_id: string;
   booking_ref: string;
+  ticket_ids: string[];
   booked_at: string;
   booking_status: string;
   trip_id: string;
@@ -252,12 +253,20 @@ export interface Bus {
 }
 export interface Driver {
   id: string;
-  operator_id: string;
   first_name: string;
   last_name: string;
-  license_no: string;
-  created_at: string;
-  updated_at: string;
+  email: string;
+  username: string;
+  phone: string;
+  password: string;
+}
+export interface DriverCreateDTO {
+  first_name: string;
+  last_name: string;
+  email: string;
+  username: string;
+  phone: string;
+  password: string;
 }
 export interface Route {
   route_id: string;
@@ -301,6 +310,9 @@ export type Passenger = {
   email: string | null;
   phone: string;
   id_number: string | null;
+  is_child?: boolean;
+  tin_number?: string;
+  company_name?: string;
 };
 export interface RouteDTO {
   id: string;

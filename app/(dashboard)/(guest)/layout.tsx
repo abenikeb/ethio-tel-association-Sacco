@@ -1,15 +1,8 @@
 "use client";
 import type React from "react";
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "@/app/globals.css";
-import Navbar from "@/components/navbar";
-import { AuthProtector } from "@/lib/authProtector";
-import { AuthProvider, useAuth } from "@/lib/authContext";
-import Sidebar from "@/components/SuperAdminSideBar";
-import { useState } from "react";
 import GuestNavBar from "@/components/GuestNavBar";
 
+<<<<<<< HEAD
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
@@ -39,14 +32,25 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export default function DashboardLayout({
 	children,
+=======
+export default function GuestDashboard({
+  children,
+>>>>>>> origin/dev
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+<<<<<<< HEAD
 	const [isNavbarLoaded, setIsNavbarLoaded] = useState(false);
 	return (
 		<html lang="en">
 			<body className={`font-sans antialiased`}>
 				<GuestNavBar />
+=======
+  return (
+    <html lang="en">
+      <body className={`font-sans antialiased`}>
+        <GuestNavBar />
+>>>>>>> origin/dev
 
 				<main>{children}</main>
 			</body>

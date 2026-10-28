@@ -164,9 +164,23 @@ export default function GuestSeatBookingDialog({
   };
 
   const handleBack = () => {
-    setMultiSelect([]);
+    setPassengers([
+      {
+        name: "",
+        email: "",
+        phone: "",
+        id_number: "",
+      },
+    ]);
+    // setSeatDict({});
+
+    setCurrentPassengerIndex(0);
     console.log(selectedSeats);
-    setToggle(false);
+    if (step === 2) {
+      setStep(1);
+    } else {
+      setToggle(false);
+    }
   };
 
   const handleDialogClose = () => {
@@ -185,7 +199,6 @@ export default function GuestSeatBookingDialog({
     setCurrentPassengerIndex(0);
     setEditingPassenger({});
   };
-  console.log("opening the seat booking");
 
   return (
     <div>

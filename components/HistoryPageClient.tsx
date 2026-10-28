@@ -67,7 +67,7 @@ export default function HistoryPageClient() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br  flex items-center justify-center p-4">
+      <div className="min-h-screen bg-linear-to-br  flex items-center justify-center p-4">
         <div className="flex items-center gap-3 text-primary">
           <Loader2 className="w-6 h-6 animate-spin" />
           <span className="text-lg font-medium">Loading your tickets...</span>

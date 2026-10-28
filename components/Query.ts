@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+<<<<<<< HEAD
 	agentApi,
 	SaccoAgentApi,
 	kycApi,
@@ -7,6 +8,17 @@ import {
 	passengerApi,
 	sessionMgmt,
 	superAdminApi,
+=======
+  agentApi,
+  DanuAgentApi,
+  kycApi,
+  notificationAPI,
+  operatorApi,
+  passengerApi,
+  profileApi,
+  sessionMgmt,
+  superAdminApi,
+>>>>>>> origin/dev
 } from "@/app/api/api";
 import {
 	Agent,
@@ -28,6 +40,8 @@ import {
 	User,
 } from "@/lib/model";
 import { ScheduleDTO } from "@/app/(dashboard)/(operator)/operator/trips/page";
+import { $ZodNumberInternals } from "zod/v4/core";
+import { Notification } from "@/lib/dixiedb";
 export interface Trips_s {
 	id: string;
 	trip_id: string;
@@ -110,6 +124,20 @@ export const useUsers = (page?: number, per_page?: number, noCache = false) => {
 		refetchOnWindowFocus: noCache ? true : false,
 	});
 };
+export const useMyNotifications = (from_date?: string) => {
+  return useQuery({
+    queryKey: ["my-notifications", from_date],
+    queryFn: async () => {
+      const res = await notificationAPI.getMyNotifications(from_date);
+      return {
+        items: res.items as Notification[],
+        total: res.total,
+        page: res.page,
+      };
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+};
 export const usePassengerHistory = (page: number, per_page: number) => {
 	return useQuery({
 		queryKey: ["history", per_page, page],
@@ -135,6 +163,7 @@ export const useSuperAdminStat = () => {
 		staleTime: 5 * 60 * 1000,
 	});
 };
+<<<<<<< HEAD
 export const useSaccoAgentReportData = (
 	operator_id: string,
 	from_date: string,
@@ -160,6 +189,92 @@ export const useSaccoAgentReportData = (
 				per_page,
 			);
 			console.log(operator_id, "id");
+=======
+export const useDanuAgentOperatorReport = (
+  agent_id: string,
+  page?: number,
+  per_page?: number,
+  from_date?: string,
+  to_date?: string,
+) => {
+  return useQuery({
+    queryKey: [
+      "danu-agent-report",
+      agent_id,
+
+      page,
+      per_page,
+      from_date,
+      to_date,
+    ],
+    queryFn: async () => {
+      const res = await DanuAgentApi.getReportForAllOperator(
+        agent_id,
+        from_date,
+        to_date,
+        page,
+        per_page,
+      );
+      console.log(res, "data from report");
+
+      return {
+        items: res.items as {
+          operator_name: string;
+          operator_id: string;
+          Total_Ticket_Sales: number;
+          Gross_Revenue: number;
+          Bus: {
+            bus_id: string;
+            capacity: number;
+            plate_no: string;
+            side_no: string;
+            Total_Ticket_Sales: number;
+            Gross_Revenue: number;
+            who_is_selling: {
+              seller_id: string;
+              seller_name: string;
+              seller_type: string;
+              Total_Ticket_Sales: number;
+              Gross_Revenue: number;
+            }[];
+          }[];
+        }[],
+        total: res.total,
+        date: res.date,
+        tickets_sold: res.tickets_sold,
+        revenue: res.revenue,
+        page: res.page,
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+};
+export const useDanuAgentReportData = (
+  operator_id: string,
+  from_date: string,
+  to_date: string,
+  page?: number,
+  per_page?: number,
+) => {
+  return useQuery({
+    queryKey: [
+      "danu-agent-report",
+      operator_id,
+      from_date,
+      to_date,
+      page,
+      per_page,
+    ],
+    queryFn: async () => {
+      const res = await DanuAgentApi.getReportData(
+        operator_id,
+        from_date,
+        to_date,
+        page,
+        per_page,
+      );
+      console.log(res, "data from report");
+>>>>>>> origin/dev
 
 			return {
 				items: res.items as {
@@ -434,17 +549,30 @@ export const useCreateTrip = () => {
 };
 
 type CreateDriverPayload = {
+<<<<<<< HEAD
 	operator_id: string;
 	body: {
 		first_name: string;
 		last_name: string;
 		license_no: string;
 	};
+=======
+  operator_id: string;
+  body: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    username: string;
+    phone: string;
+    password: string;
+  };
+>>>>>>> origin/dev
 };
 
 export const useCreateDriver = () => {
 	const queryClient = useQueryClient();
 
+<<<<<<< HEAD
 	return useMutation<Driver, Error, CreateDriverPayload>({
 		mutationFn: async ({ operator_id, body }) => {
 			return operatorApi.createDriver(body, operator_id);
@@ -455,6 +583,22 @@ export const useCreateDriver = () => {
 			});
 		},
 	});
+=======
+  return useMutation<Driver, Error, CreateDriverPayload>({
+    mutationFn: async ({ operator_id, body }) => {
+      try {
+        return operatorApi.createDriver(body, operator_id);
+      } catch (err) {
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["drivers"],
+      });
+    },
+  });
+>>>>>>> origin/dev
 };
 
 export const useLotteryList = (
@@ -644,6 +788,7 @@ export const useOperatorReport2 = (
 };
 
 export const useOperatorTransactions = (
+<<<<<<< HEAD
 	operator_id: string,
 	paid_by_id?: string,
 	from_date?: string,
@@ -673,6 +818,44 @@ export const useOperatorTransactions = (
 		staleTime: 1000 * 60 * 5,
 		enabled: !!operator_id,
 	});
+=======
+  operator_id: string,
+  paid_by_id?: string,
+  from_date?: string,
+  to_date?: string,
+  page?: number,
+  per_page?: number,
+) => {
+  return useQuery({
+    queryKey: ["danu_agent_refund_list", paid_by_id, from_date, to_date],
+    queryFn: async () => {
+      const res = await operatorApi.getTransactionData(
+        operator_id,
+        paid_by_id,
+        from_date,
+        to_date,
+        page,
+        per_page,
+      );
+
+      return res.items as {
+        id: string;
+        agent_id: string;
+        paid_by: {
+          id?: string;
+          name?: string;
+        };
+        paid_amount: number;
+        paid_date: string;
+        transaction_id: string;
+        created_at: string;
+        updated_at: string;
+      }[];
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: !!operator_id,
+  });
+>>>>>>> origin/dev
 };
 
 export const useOperatorAgentDetail = (
@@ -708,6 +891,15 @@ export const useSaccoAgentRefundList = (
 		staleTime: 1000 * 60 * 5,
 		enabled: !!agent_id,
 	});
+};
+export const useAvatar = () => {
+  return useQuery({
+    queryKey: ["avatar"],
+    queryFn: async () => {
+      const res = profileApi.getMyAvatar();
+      return res;
+    },
+  });
 };
 export const useBookingHistoryPublic = (
 	user_id: string,

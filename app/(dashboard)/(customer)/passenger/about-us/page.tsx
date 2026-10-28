@@ -1,11 +1,13 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowRight, Users, Zap, Globe, Shield } from "lucide-react";
 import Link from "next/link";
 
 export default function AboutPage() {
+<<<<<<< HEAD
 	return (
 		<main className="min-h-screen bg-linear-to-b from-background via-background to-secondary/10">
 			{/* Hero Section */}
@@ -21,6 +23,24 @@ export default function AboutPage() {
 						through smart, accessible digital solutions.
 					</p>
 					{/* <div className="flex flex-col sm:flex-row gap-4 justify-center">
+=======
+  const { t } = useTranslation();
+
+  return (
+    <main className="min-h-screen bg-linear-to-b from-background via-background to-secondary/10">
+      {/* Hero Section */}
+      <section className="relative px-4 py-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+        <div className="text-center mb-16">
+          <h1 className="text-5xl sm:text-6xl font-bold text-foreground mb-6 leading-tight">
+            <span className="text-pretty">{t("aboutHeroTitle1")}</span>
+            <br />
+            <span className="text-primary">{t("aboutHeroTitle2")}</span>
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
+            {t("aboutHeroDesc")}
+          </p>
+          {/* <div className="flex flex-col sm:flex-row gap-4 justify-center">
+>>>>>>> origin/dev
             <Button size="lg" className="gap-2 bg-primary hover:bg-primary/90">
               Get Started <ArrowRight className="w-4 h-4" />
             </Button>
@@ -50,6 +70,7 @@ export default function AboutPage() {
         </div> */}
 			</section>
 
+<<<<<<< HEAD
 			{/* Vision & Mission Section */}
 			<section className="px-4 py-12 sm:px-6 lg:px-8 bg-card/40 border-t border-b border-border">
 				<div className="max-w-6xl mx-auto">
@@ -294,6 +315,216 @@ export default function AboutPage() {
 					</div>
 				</div>
 			</section>
+=======
+      {/* Vision & Mission Section */}
+      <section className="px-4 py-12 sm:px-6 lg:px-8 bg-card/40 border-t border-b border-border">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-12">
+            {/* Vision */}
+            <div className="space-y-4">
+              <h2 className="text-3xl font-bold text-foreground">
+                {t("vision")}
+              </h2>
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                {t("visionDesc")}
+              </p>
+              <div className="pt-4 flex items-start gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                <p className="text-muted-foreground">{t("visionPoint1")}</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                <p className="text-muted-foreground">{t("visionPoint2")}</p>
+              </div>
+            </div>
+
+            {/* Mission */}
+            <div className="space-y-4">
+              <h2 className="text-3xl font-bold text-foreground">
+                {t("mission")}
+              </h2>
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                {t("missionDesc")}
+              </p>
+              <div className="pt-4 flex items-start gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                <p className="text-muted-foreground">{t("missionPoint1")}</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                <p className="text-muted-foreground">{t("missionPoint2")}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Why We Exist Section */}
+      <section className="px-4 py-20 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-foreground mb-4">
+              {t("whyWeExist")}
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              {t("whyWeExistDesc")}
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-12">
+            {/* Passenger Challenges */}
+            <Card className="p-8 bg-gradient-to-br from-card to-secondary/5 border-border hover:border-primary/50 transition-colors">
+              <h3 className="text-2xl font-bold text-foreground mb-6">
+                {t("passengerChallenges")}
+              </h3>
+              <ul className="space-y-4">
+                <li className="flex items-start gap-3">
+                  <span className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />
+                  <span className="text-muted-foreground">
+                    {t("challenge1")}
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />
+                  <span className="text-muted-foreground">
+                    {t("challenge2")}
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />
+                  <span className="text-muted-foreground">
+                    {t("challenge3")}
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />
+                  <span className="text-muted-foreground">
+                    {t("challenge4")}
+                  </span>
+                </li>
+              </ul>
+            </Card>
+
+            {/* Operator Challenges */}
+            <Card className="p-8 bg-gradient-to-br from-card to-secondary/5 border-border hover:border-primary/50 transition-colors">
+              <h3 className="text-2xl font-bold text-foreground mb-6">
+                {t("operatorChallenges")}
+              </h3>
+              <ul className="space-y-4">
+                <li className="flex items-start gap-3">
+                  <span className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />
+                  <span className="text-muted-foreground">
+                    {t("operator1")}
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />
+                  <span className="text-muted-foreground">
+                    {t("operator2")}
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />
+                  <span className="text-muted-foreground">
+                    {t("operator3")}
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />
+                  <span className="text-muted-foreground">
+                    {t("operator4")}
+                  </span>
+                </li>
+              </ul>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* What We Offer Section */}
+      <section className="px-4 py-20 sm:px-6 lg:px-8 bg-primary/5">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-foreground mb-4">
+              {t("whatWeOffer")}
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              {t("whatWeOfferDesc")}
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-12">
+            {/* For Passengers */}
+            <div>
+              <h3 className="text-2xl font-bold text-foreground mb-8 flex items-center gap-3">
+                <Users className="w-6 h-6 text-primary" />
+                {t("forPassengers")}
+              </h3>
+              <ul className="space-y-4">
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t("p1")}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t("p2")}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t("p3")}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t("p4")}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t("p5")}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t("p6")}</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* For Operators */}
+            <div>
+              <h3 className="text-2xl font-bold text-foreground mb-8 flex items-center gap-3">
+                <Globe className="w-6 h-6 text-primary" />
+                {t("forOperators")}
+              </h3>
+              <ul className="space-y-4">
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t("o1")}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t("o2")}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t("o3")}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t("o4")}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t("o5")}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t("o6")}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+>>>>>>> origin/dev
 
 			{/* Built for Ethiopia Section */}
 			<section className="px-4 py-20 sm:px-6 lg:px-8">
@@ -412,6 +643,7 @@ export default function AboutPage() {
 				</div>
 			</section>
 
+<<<<<<< HEAD
 			{/* CTA Section */}
 			<section className="px-4 py-20 sm:px-6 lg:px-8">
 				<div className="max-w-4xl mx-auto text-center">
@@ -455,6 +687,54 @@ export default function AboutPage() {
 					</div>
 				</div>
 			</section>
+=======
+      {/* CTA Section */}
+      <section className="px-4 py-20 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl font-bold text-foreground mb-6">
+            {t("joinDanu")}
+          </h2>
+          <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
+            {t("joinDanuDesc")}
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <Button
+              asChild
+              size="lg"
+              className="gap-2 bg-primary hover:bg-primary/90 px-8"
+            >
+              <Link href="/login" className="flex items-center gap-2">
+                {t("forPassengers")} <ArrowRight className="mt-1 w-4 h-4" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant={"outline"}
+              size="lg"
+              className="gap-2 bg-accent hover:bg-accent/90 px-8"
+            >
+              <Link href="/login" className="flex items-center gap-2">
+                {t("forOperators")} <ArrowRight className="mt-1 w-4 h-4" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-primary text-primary hover:bg-primary/10 px-8"
+            >
+              <Link
+                href="/passenger/contact"
+                className="flex items-center gap-2"
+              >
+                Get In Touch <ArrowRight className="mt-1 w-4 h-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+>>>>>>> origin/dev
 
 			{/* Footer CTA */}
 			<section className="px-4 py-16 sm:px-6 lg:px-8 bg-gradient-to-r from-primary/10 to-accent/10 border-t border-border">

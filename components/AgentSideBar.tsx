@@ -1,6 +1,7 @@
 "use client";
 
 import {
+<<<<<<< HEAD
 	Bus,
 	Calendar,
 	Home,
@@ -12,6 +13,20 @@ import {
 	ChartBar,
 	TrendingUp,
 	TicketCheck,
+=======
+  Bus,
+  Calendar,
+  Home,
+  Users,
+  Settings,
+  ScanFace,
+  Ticket,
+  DollarSign,
+  ChartBar,
+  TrendingUp,
+  TicketCheck,
+  TrendingUpDown,
+>>>>>>> origin/dev
 } from "lucide-react";
 import {
 	Sidebar,
@@ -27,8 +42,10 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { TrendingDownRounded } from "@mui/icons-material";
 
 const menuItems = [
+<<<<<<< HEAD
 	{
 		title: "Ticket Booking",
 		url: "/agent/ticket-booking",
@@ -50,11 +67,40 @@ const menuItems = [
 		url: "/agent/report",
 		icon: TrendingUp,
 	},
+=======
+  {
+    title: "Ticket Booking",
+    url: "/agent/ticket-booking",
+    icon: Ticket,
+  },
+  {
+    title: "Refund List",
+    url: "/agent/refund-list",
+    icon: DollarSign,
+  },
+  {
+    title: "Ticket Booked",
+    url: "/agent/ticket-booked",
+    icon: TicketCheck,
+  },
+  {
+    title: "Operator Report",
+    url: "/agent/operator-report",
+    icon: TrendingUpDown,
+  },
+
+  {
+    title: "Danu's Report",
+    url: "/agent/report",
+    icon: TrendingUp,
+  },
+>>>>>>> origin/dev
 ];
 
 export function AgentSideBar() {
 	const path = usePathname();
 
+<<<<<<< HEAD
 	return (
 		<Sidebar>
 			<SidebarHeader className="border-b border-sidebar-border px-6 py-4">
@@ -68,6 +114,23 @@ export function AgentSideBar() {
 						<SidebarMenu className="gap-5">
 							{menuItems.map((item) => {
 								const isActive = path === item.url;
+=======
+  return (
+    <Sidebar>
+      <SidebarHeader className="border-b border-sidebar-border py-0">
+        <div className="flex w-full  justify-center cursor-pointer">
+          <Link href={"/agent/ticket-booking"}>
+            <img src="/logo.png" className="py-0 h-25 w-auto" alt="Danu logo" />
+          </Link>
+        </div>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent className="">
+            <SidebarMenu className="gap-5">
+              {menuItems.map((item) => {
+                const isActive = path === item.url;
+>>>>>>> origin/dev
 
 								return (
 									<SidebarMenuItem key={item.title}>

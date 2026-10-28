@@ -39,6 +39,7 @@ import { superAdminApi } from "@/app/api/api";
 import { toast, Toaster } from "sonner";
 import { Operator } from "@/lib/model";
 import {
+<<<<<<< HEAD
 	Dialog,
 	DialogContent,
 	DialogFooter,
@@ -46,6 +47,14 @@ import {
 	DialogHeader,
 	DialogOverlay,
 	DialogTitle,
+=======
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogOverlay,
+  DialogTitle,
+>>>>>>> origin/dev
 } from "./ui/dialog";
 import InfoRow from "./InfoRow";
 import { useAgent, useUsers } from "./Query";
@@ -71,6 +80,7 @@ export default function AgentList() {
 	);
 	const { data: users, refetch: userRefetch } = useUsers();
 
+<<<<<<< HEAD
 	const filteredAgents = data?.items.filter(
 		(emp) =>
 			emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -80,6 +90,19 @@ export default function AgentList() {
 	const filteredUsers = users?.items.filter(
 		(user) => !user.organization_id && user?.roles?.[0]?.slug == "agent_admin",
 	);
+=======
+  const filteredAgents = data?.items.filter(
+    (emp) =>
+      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.contact_email.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+  console.log(filteredAgents);
+
+  const filteredUsers = users?.items.filter(
+    (user) => !user.organization_id && user?.roles?.[0]?.slug == "agent_admin",
+  );
+  console.log(users, "filtered Users");
+>>>>>>> origin/dev
 
 	useEffect(() => {
 		setCurrentPage(1);
@@ -180,6 +203,7 @@ export default function AgentList() {
 		win.print();
 	};
 
+<<<<<<< HEAD
 	return (
 		<div className="relative space-y-6">
 			<Toaster richColors position="top-right" />
@@ -227,6 +251,60 @@ export default function AgentList() {
 					</div>
 				</DialogContent>
 			</Dialog>
+=======
+  return (
+    <div className="relative space-y-6">
+      <Toaster richColors position="top-right" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between">
+        <h1 className="text-3xl font-bold text-center md:text-left text-foreground mb-5 md:md-auto ">
+          Danu Agent List
+        </h1>
+        <AddAgentModal onSuccess={refetch} />
+      </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm max-h-[80%] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>User List</DialogTitle>
+          </DialogHeader>
+          <div ref={printRef}>
+            <div className="space-y-2 mt-4 ">
+              {filteredUsers?.length == 0 ? (
+                <div className="p-6 text-center text-gray-500">
+                  No User to Assign
+                </div>
+              ) : (
+                filteredUsers?.map((users) => (
+                  <div
+                    key={users.id}
+                    className="flex justify-between items-center p-2 rounded hover:bg-gray-100 "
+                  >
+                    <div>
+                      <span className="font-medium ">
+                        {(users.first_name ?? "") +
+                          " " +
+                          (users.last_name ?? "")}
+                      </span>
+                      <span className="text-xs text-gray-500 ml-2">
+                        {` (${users.email})`}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        handleAssignAgentToUser(users.id);
+                      }}
+                    >
+                      Select
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+>>>>>>> origin/dev
 
 			<Dialog open={detailToggle} onOpenChange={setDetailToggle}>
 				<DialogOverlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" />

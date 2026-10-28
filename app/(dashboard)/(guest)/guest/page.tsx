@@ -243,6 +243,7 @@ export default function GuestSaccoBooking() {
 									/>
 								</div>
 
+<<<<<<< HEAD
 								<div className="flex items-end">
 									<Button
 										disabled={
@@ -275,6 +276,41 @@ export default function GuestSaccoBooking() {
 							Popular Routes
 						</h3>
 					</div>
+=======
+                <div className="flex items-end">
+                  <Button
+                    disabled={
+                      !form.route_from || !form.route_to || !form.departure_date
+                    }
+                    className="w-full bg-[#00a896] hover:bg-[#028f7f] text-white py-6 text-lg font-semibold"
+                  >
+                    Find Tickets
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </form>
+        </div>
+      </section>
+      <section className="py-16 px-4 bg-background">
+        <div className="container mx-auto max-w-6xl">
+          <div className="flex items-center justify-center gap-3 mb-5">
+            <TrendingUp className="w-8 h-8 text-[#00a896]" />
+            <h3 className="text-3xl font-bold text-foreground">
+              Popular Routes
+            </h3>
+          </div>
+          {loading && (
+            <div className="my-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(3)].map((_, i) => (
+                <Card key={i} className="p-6 animate-pulse">
+                  <div className="h-12 bg-muted rounded w-3/4 mb-4"></div>
+                  <div className="h-8 bg-muted rounded w-1/2"></div>
+                </Card>
+              ))}
+            </div>
+          )}
+>>>>>>> origin/dev
 
 					{/* Has data */}
 					{!loading && popularRoutes?.length > 0 && (

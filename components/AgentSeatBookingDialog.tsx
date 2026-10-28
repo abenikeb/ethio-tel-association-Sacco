@@ -32,6 +32,7 @@ type SeatBookingDialogProps = {
 };
 
 export default function AgentSeatBookingDialog({
+<<<<<<< HEAD
 	tripId,
 	agentId,
 
@@ -41,6 +42,16 @@ export default function AgentSeatBookingDialog({
 	onSucess,
 	setLayoutToggle,
 	setToggle,
+=======
+  tripId,
+  agentId,
+  selectedSeats,
+  number_of_passengers,
+  toggle,
+  onSucess,
+  setLayoutToggle,
+  setToggle,
+>>>>>>> origin/dev
 
 	setMultiSelect,
 }: SeatBookingDialogProps) {
@@ -124,6 +135,7 @@ export default function AgentSeatBookingDialog({
 				(p) => (p.email = (p.email ?? "").trim().length === 0 ? null : p.email),
 			);
 
+<<<<<<< HEAD
 			await SaccoAgentApi.handleBooking(agentId, {
 				trip_id: tripId,
 				seat_codes: selectedSeats,
@@ -132,6 +144,17 @@ export default function AgentSeatBookingDialog({
 				payment_reference: `devpay_${uuid}`,
 				external_ref: `ex_${uuid}`,
 			});
+=======
+      const data = await DanuAgentApi.handleBooking(agentId, {
+        trip_id: tripId,
+        seat_codes: selectedSeats,
+        passenger_details: passengers,
+        payment_method: "cash",
+        payment_reference: `devpay_${uuid}`,
+        external_ref: `ex_${uuid}`,
+      });
+      console.log(data, "booking response");
+>>>>>>> origin/dev
 
 			toast.success("Seats successfully booked!", { duration: 3000 });
 			onSucess?.();
@@ -168,11 +191,33 @@ export default function AgentSeatBookingDialog({
 		}
 	};
 
+<<<<<<< HEAD
 	const handleBack = () => {
 		setMultiSelect([]);
 		console.log(selectedSeats);
 		setToggle(false);
 	};
+=======
+  const handleBack = () => {
+    setPassengers([
+      {
+        name: "",
+        email: "",
+        phone: "",
+        id_number: "",
+      },
+    ]);
+    // setSeatDict({});
+
+    setCurrentPassengerIndex(0);
+    console.log(selectedSeats);
+    if (step === 2) {
+      setStep(1);
+    } else {
+      setToggle(false);
+    }
+  };
+>>>>>>> origin/dev
 
 	const handleDialogClose = () => {
 		setToggle(false);

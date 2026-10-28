@@ -174,7 +174,7 @@ const DayCard = ({
               onPayNow?.();
             }}
             className="text-sm cursor-pointer text-white font-medium mt-6 transition-all group-hover:gap-1 flex items-center justify-start gap-0.5"
-            disabled={(transaction_id ?? "").trim().length > 0}
+            // disabled={(transaction_id ?? "").trim().length > 0}
           >
             Pay now
           </Button>
@@ -338,9 +338,9 @@ export default function OperatorAdminReport() {
                   <p className="text-base font-medium text-gray-500">
                     No report data available
                   </p>
-                  <p className="text-xs opacity-70 mt-2">
+                  {/* <p className="text-xs opacity-70 mt-2">
                     Try adjusting your filters or check back later
-                  </p>
+                  </p> */}
                 </div>
               ) : (
                 (Array.isArray(data) ? [...data].reverse() : [data]).map(
