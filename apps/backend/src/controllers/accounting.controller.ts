@@ -21,7 +21,7 @@ accountingRouter.get("/account-balance/:code", async (req, res) => {
 		const { asOfDate } = req.query;
 		const balance = await accountingService.getAccountBalance(
 			code,
-			asOfDate ? new Date(asOfDate as string) : undefined
+			asOfDate ? new Date(asOfDate as string) : undefined,
 		);
 		res.status(200).json(balance);
 	} catch (error: any) {
@@ -34,7 +34,7 @@ accountingRouter.get("/trial-balance", async (req, res) => {
 	try {
 		const { asOfDate } = req.query;
 		const trialBalance = await accountingService.getTrialBalance(
-			asOfDate ? new Date(asOfDate as string) : undefined
+			asOfDate ? new Date(asOfDate as string) : undefined,
 		);
 		res.status(200).json(trialBalance);
 	} catch (error: any) {
@@ -47,7 +47,7 @@ accountingRouter.get("/balance-sheet", async (req, res) => {
 	try {
 		const { asOfDate } = req.query;
 		const balanceSheet = await accountingService.getBalanceSheet(
-			asOfDate ? new Date(asOfDate as string) : undefined
+			asOfDate ? new Date(asOfDate as string) : undefined,
 		);
 		res.status(200).json(balanceSheet);
 	} catch (error: any) {
@@ -61,7 +61,7 @@ accountingRouter.get("/income-statement", async (req, res) => {
 		const { fromDate, toDate } = req.query;
 		const incomeStatement = await accountingService.getIncomeStatement(
 			fromDate ? new Date(fromDate as string) : undefined,
-			toDate ? new Date(toDate as string) : undefined
+			toDate ? new Date(toDate as string) : undefined,
 		);
 		res.status(200).json(incomeStatement);
 	} catch (error: any) {
@@ -87,7 +87,7 @@ accountingRouter.get("/journal-entries", async (req, res) => {
 			Number(page),
 			Number(limit),
 			fromDate ? new Date(fromDate as string) : undefined,
-			toDate ? new Date(toDate as string) : undefined
+			toDate ? new Date(toDate as string) : undefined,
 		);
 		res.status(200).json(journalEntries);
 	} catch (error: any) {
@@ -103,7 +103,7 @@ accountingRouter.get("/general-ledger/:accountCode", async (req, res) => {
 		const ledger = await accountingService.getGeneralLedger(
 			accountCode,
 			fromDate ? new Date(fromDate as string) : undefined,
-			toDate ? new Date(toDate as string) : undefined
+			toDate ? new Date(toDate as string) : undefined,
 		);
 		res.status(200).json(ledger);
 	} catch (error: any) {
@@ -136,7 +136,7 @@ accountingRouter.get("/chart-of-accounts", async (req, res) => {
 	try {
 		const { isActive } = req.query;
 		const coa = await accountingService.getChartOfAccounts(
-			isActive === "true" ? true : isActive === "false" ? false : undefined
+			isActive === "true" ? true : isActive === "false" ? false : undefined,
 		);
 		res.status(200).json(coa);
 	} catch (error: any) {
@@ -150,7 +150,7 @@ accountingRouter.get("/general-ledger-summary", async (req, res) => {
 		const { fromDate, toDate } = req.query;
 		const summary = await accountingService.getGeneralLedgerSummary(
 			fromDate ? new Date(fromDate as string) : undefined,
-			toDate ? new Date(toDate as string) : undefined
+			toDate ? new Date(toDate as string) : undefined,
 		);
 		res.status(200).json(summary);
 	} catch (error: any) {
