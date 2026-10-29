@@ -1,5 +1,5 @@
 {
-	"name": "Melakm Solutions",
+	"name": "Sacco backend Solutions",
 	"version": "1.0.0",
 	"description": "A backend service for managing members, loans, and savings using Prisma, Express, and PostgreSQL.",
 	"main": "dist/index.js",
