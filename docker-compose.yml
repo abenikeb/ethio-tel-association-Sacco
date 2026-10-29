@@ -1,0 +1,90 @@
+services:
+  db:
+    image: postgres:16-alpine # change if your Prisma provider is not PostgreSQL
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: ../../docker/backend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "5000:5000"
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_userinfo:/app/userInfo
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: ../../docker/next-npm.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL}
+    restart: unless-stopped
+    depends_on: [backend]
+    environment:
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: ../../docker/next-npm.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL}
+    restart: unless-stopped
+    depends_on: [backend]
+    environment:
+      PORT: 3000
+    ports:
+      - "3001:3000"
+
+  superadmin:
+    build:
+      context: ./apps/superadmin
+      dockerfile: ../../docker/next-npm.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL}
+    restart: unless-stopped
+    depends_on: [backend]
+    environment:
+      PORT: 3000
+    ports:
+      - "3002:3000"
+
+  portal:
+    build:
+      context: ./apps/portal
+      dockerfile: ../../docker/next-pnpm.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${PORTAL_API_URL}
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+    ports:
+      - "3003:3000"
+
+volumes:
+  db_data:
+  backend_uploads:
+  backend_userinfo:
