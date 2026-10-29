@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: ${IMAGE_PREFIX}/backend:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+    ports: ["5000:5000"]
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_userinfo:/app/userInfo
+
+  frontend:
+    image: ${IMAGE_PREFIX}/frontend:latest
+    restart: unless-stopped
+    environment: { PORT: 3000 }
+    ports: ["3000:3000"]
+
+  admin:
+    image: ${IMAGE_PREFIX}/admin:latest
+    restart: unless-stopped
+    environment: { PORT: 3000 }
+    ports: ["3001:3000"]
+
+  superadmin:
+    image: ${IMAGE_PREFIX}/superadmin:latest
+    restart: unless-stopped
+    environment: { PORT: 3000 }
+    ports: ["3002:3000"]
+
+  portal:
+    image: ${IMAGE_PREFIX}/portal:latest
+    restart: unless-stopped
+    environment: { PORT: 3000 }
+    ports: ["3003:3000"]
+
+volumes:
+  db_data:
+  backend_uploads:
+  backend_userinfo:
