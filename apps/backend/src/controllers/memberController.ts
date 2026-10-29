@@ -85,16 +85,16 @@ export const fetchMembers = async (req, res) => {
 		const formattedMembers = members.map((member) => {
 			// Find the most recent transaction for each type within the month
 			const savingsTransaction = member.transactions.find(
-				(t) => t.type === "SAVINGS"
+				(t) => t.type === "SAVINGS",
 			);
 			const membershipFeeTransaction = member.transactions.find(
-				(t) => t.type === "MEMBERSHIP_FEE"
+				(t) => t.type === "MEMBERSHIP_FEE",
 			);
 			const willingDepositTransaction = member.transactions.find(
-				(t) => t.type === "WILLING_DEPOSIT"
+				(t) => t.type === "WILLING_DEPOSIT",
 			);
 			const loanRepaymentTransaction = member.transactions.find(
-				(t) => t.type === "LOAN_REPAYMENT"
+				(t) => t.type === "LOAN_REPAYMENT",
 			);
 
 			const totalContributions =
@@ -165,7 +165,7 @@ export const importMembers = async (req, res) => {
 
 export const registerMember = async (
 	req: Request,
-	res: Response
+	res: Response,
 ): Promise<void> => {
 	try {
 		console.log("Register Member Request Body:", req.body); // Debug log
@@ -254,7 +254,7 @@ export const registerMember = async (
 			data: newMember,
 		});
 	} catch (error) {
-		console.error("[v0] Error registering member:", error);
+		console.error("[sacco] Error registering member:", error);
 		const errorMessage =
 			error instanceof Error ? error.message : "Unknown error";
 
@@ -290,7 +290,7 @@ export const getMember = async (req: Request, res: Response): Promise<void> => {
 			data: member,
 		});
 	} catch (error) {
-		console.error("[v0] Error fetching member:", error);
+		console.error("[sacco] Error fetching member:", error);
 		const errorMessage =
 			error instanceof Error ? error.message : "Unknown error";
 
@@ -303,7 +303,7 @@ export const getMember = async (req: Request, res: Response): Promise<void> => {
 
 export const getMemberByEtNumber = async (
 	req: Request,
-	res: Response
+	res: Response,
 ): Promise<void> => {
 	try {
 		const { etNumber } = req.params;
@@ -322,7 +322,7 @@ export const getMemberByEtNumber = async (
 			data: member,
 		});
 	} catch (error) {
-		console.error("[v0] Error fetching member by etNumber:", error);
+		console.error("[sacco] Error fetching member by etNumber:", error);
 		const errorMessage =
 			error instanceof Error ? error.message : "Unknown error";
 
@@ -335,7 +335,7 @@ export const getMemberByEtNumber = async (
 
 export const listMembers = async (
 	req: Request,
-	res: Response
+	res: Response,
 ): Promise<void> => {
 	try {
 		const skip = req.query.skip ? Number(req.query.skip) : 0;
@@ -355,7 +355,7 @@ export const listMembers = async (
 			data: result,
 		});
 	} catch (error) {
-		console.error("[v0] Error listing members:", error);
+		console.error("[sacco] Error listing members:", error);
 		res.status(500).json({
 			error: "Failed to list members",
 			details: error instanceof Error ? error.message : "Unknown error",
@@ -365,7 +365,7 @@ export const listMembers = async (
 
 export const updateMember = async (
 	req: Request,
-	res: Response
+	res: Response,
 ): Promise<void> => {
 	try {
 		const { id } = req.params;
@@ -391,7 +391,7 @@ export const updateMember = async (
 			}
 		}
 
-		console.log("[v0] Update data received:", updateData);
+		console.log("[sacco] Update data received:", updateData);
 
 		// Validate etNumber if provided
 		if (updateData.etNumber && isNaN(Number(updateData.etNumber))) {
@@ -403,7 +403,7 @@ export const updateMember = async (
 
 		const updatedMember = await memberService.updateMember(
 			Number(id),
-			updateData
+			updateData,
 		);
 
 		res.json({
@@ -412,7 +412,7 @@ export const updateMember = async (
 			data: updatedMember,
 		});
 	} catch (error) {
-		console.error("[v0] Error updating member:", error);
+		console.error("[sacco] Error updating member:", error);
 		const errorMessage =
 			error instanceof Error ? error.message : "Unknown error";
 
@@ -437,7 +437,7 @@ export const updateMember = async (
 
 export const deleteMember = async (
 	req: Request,
-	res: Response
+	res: Response,
 ): Promise<void> => {
 	try {
 		const { id } = req.params;
@@ -456,7 +456,7 @@ export const deleteMember = async (
 			message: result.message,
 		});
 	} catch (error) {
-		console.error("[v0] Error deleting member:", error);
+		console.error("[sacco] Error deleting member:", error);
 		const errorMessage =
 			error instanceof Error ? error.message : "Unknown error";
 
